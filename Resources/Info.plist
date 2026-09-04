@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>AudioAdjuster</string>
+	<key>CFBundleDisplayName</key>
+	<string>Audio Adjuster</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.audioadjuster.AudioAdjuster</string>
+	<key>CFBundleExecutable</key>
+	<string>AudioAdjuster</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.2</string>
+	<!-- Menu bar only: no Dock icon, no main window. -->
+	<key>LSUIElement</key>
+	<true/>
+	<!-- Core Audio process taps are gated behind the audio-capture permission. -->
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Audio Adjuster reads each app's audio so it can play it back at the volume you choose.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Audio Adjuster does not record from your microphone; macOS requires this because Core Audio taps are treated as audio input.</string>
+</dict>
+</plist>

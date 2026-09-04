@@ -1,0 +1,49 @@
+{
+  "": {
+    "dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioAdjusterKit.d",
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioAdjusterKit.o",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/primary.swiftdeps"
+  },
+  "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AppAudioChannel.swift": {
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AppAudioChannel.swift.o",
+    "swiftmodule": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AppAudioChannel~partial.swiftmodule",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AppAudioChannel.swiftdeps",
+    "diagnostics": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AppAudioChannel.dia"
+  },
+  "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcess.swift": {
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioProcess.swift.o",
+    "swiftmodule": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioProcess~partial.swiftmodule",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioProcess.swiftdeps",
+    "diagnostics": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioProcess.dia"
+  },
+  "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcessRegistry.swift": {
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioProcessRegistry.swift.o",
+    "swiftmodule": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioProcessRegistry~partial.swiftmodule",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioProcessRegistry.swiftdeps",
+    "diagnostics": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/AudioProcessRegistry.dia"
+  },
+  "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/ChannelCoordinator.swift": {
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/ChannelCoordinator.swift.o",
+    "swiftmodule": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/ChannelCoordinator~partial.swiftmodule",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/ChannelCoordinator.swiftdeps",
+    "diagnostics": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/ChannelCoordinator.dia"
+  },
+  "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/CoreAudioSystem.swift": {
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/CoreAudioSystem.swift.o",
+    "swiftmodule": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/CoreAudioSystem~partial.swiftmodule",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/CoreAudioSystem.swiftdeps",
+    "diagnostics": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/CoreAudioSystem.dia"
+  },
+  "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift": {
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/GainStage.swift.o",
+    "swiftmodule": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/GainStage~partial.swiftmodule",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/GainStage.swiftdeps",
+    "diagnostics": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/GainStage.dia"
+  },
+  "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/Settings.swift": {
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/Settings.swift.o",
+    "swiftmodule": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/Settings~partial.swiftmodule",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/Settings.swiftdeps",
+    "diagnostics": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/Settings.dia"
+  }
+}

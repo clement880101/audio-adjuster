@@ -1,0 +1,3 @@
+module AudioAdjusterPackageTests {
+    header "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterPackageTests.build/include/AudioAdjusterPackageTests-Swift.h"
+}
