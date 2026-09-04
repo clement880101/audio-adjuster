@@ -1,1 +1,7 @@
+/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AppAudioChannel.swift
+/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcess.swift
+/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcessRegistry.swift
+/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/ChannelCoordinator.swift
+/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/CoreAudioSystem.swift
 /Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift
+/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/Settings.swift

@@ -28,7 +28,31 @@
       "inputs" : [
         {
           "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AppAudioChannel.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcess.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcessRegistry.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/ChannelCoordinator.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/CoreAudioSystem.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/Settings.swift"
         },
         {
           "kind" : "file",
@@ -43,7 +67,13 @@
       "moduleName" : "AudioAdjusterKit",
       "moduleOutputPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterKit.swiftmodule",
       "objects" : [
-        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/GainStage.swift.o"
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AppAudioChannel.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AudioProcess.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AudioProcessRegistry.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/ChannelCoordinator.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/CoreAudioSystem.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/GainStage.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/Settings.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -94,7 +124,31 @@
       "outputs" : [
         {
           "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AppAudioChannel.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AudioProcess.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AudioProcessRegistry.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/ChannelCoordinator.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/CoreAudioSystem.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/GainStage.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/Settings.swift.o"
         },
         {
           "kind" : "file",
@@ -103,7 +157,13 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift"
+        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AppAudioChannel.swift",
+        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcess.swift",
+        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcessRegistry.swift",
+        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/ChannelCoordinator.swift",
+        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/CoreAudioSystem.swift",
+        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift",
+        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/Settings.swift"
       ],
       "tempsPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build",
       "wholeModuleOptimization" : false
@@ -115,7 +175,19 @@
       "inputs" : [
         {
           "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/AudioProcessRegistryTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/ChannelCoordinatorTests.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/SettingsStoreTests.swift"
         },
         {
           "kind" : "file",
@@ -134,7 +206,10 @@
       "moduleName" : "AudioAdjusterKitTests",
       "moduleOutputPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterKitTests.swiftmodule",
       "objects" : [
-        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swift.o"
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/AudioProcessRegistryTests.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/ChannelCoordinatorTests.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swift.o",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/SettingsStoreTests.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -184,7 +259,19 @@
       "outputs" : [
         {
           "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/AudioProcessRegistryTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/ChannelCoordinatorTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/SettingsStoreTests.swift.o"
         },
         {
           "kind" : "file",
@@ -193,7 +280,10 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift"
+        "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/AudioProcessRegistryTests.swift",
+        "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/ChannelCoordinatorTests.swift",
+        "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift",
+        "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/SettingsStoreTests.swift"
       ],
       "tempsPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build",
       "wholeModuleOptimization" : false
@@ -301,7 +391,13 @@
       "-package-name",
       "audio_adjuster",
       "-c",
+      "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AppAudioChannel.swift",
+      "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcess.swift",
+      "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcessRegistry.swift",
+      "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/ChannelCoordinator.swift",
+      "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/CoreAudioSystem.swift",
       "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift",
+      "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/Settings.swift",
       "-I",
       "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules",
       "-target",
@@ -357,7 +453,10 @@
       "-package-name",
       "audio_adjuster",
       "-c",
+      "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/AudioProcessRegistryTests.swift",
+      "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/ChannelCoordinatorTests.swift",
       "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift",
+      "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/SettingsStoreTests.swift",
       "-I",
       "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules",
       "-target",
@@ -505,7 +604,31 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AppAudioChannel.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcess.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/AudioProcessRegistry.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/ChannelCoordinator.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/CoreAudioSystem.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/Settings.swift"
         }
       ],
       "outputFilePath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/sources"
@@ -519,7 +642,19 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/AudioProcessRegistryTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/ChannelCoordinatorTests.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/SettingsStoreTests.swift"
         }
       ],
       "outputFilePath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/sources"
@@ -547,11 +682,47 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AppAudioChannel.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AudioProcess.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/AudioProcessRegistry.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/ChannelCoordinator.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/CoreAudioSystem.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/GainStage.swift.o"
         },
         {
           "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/Settings.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/AudioProcessRegistryTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/ChannelCoordinatorTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/SettingsStoreTests.swift.o"
         },
         {
           "kind" : "file",
