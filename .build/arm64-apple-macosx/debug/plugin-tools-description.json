@@ -1,0 +1,578 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.xctest/Contents/MacOS/AudioAdjusterPackageTests",
+      "packagePath" : "/Users/clementchang/audio-adjuster",
+      "productName" : "AudioAdjusterPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.AudioAdjusterKit-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/sources",
+      "importPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "AudioAdjusterKit",
+      "moduleOutputPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterKit.swiftmodule",
+      "objects" : [
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/GainStage.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.2",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/include/AudioAdjusterKit-Swift.h",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-F",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "audio_adjuster"
+      ],
+      "outputFileMapPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/GainStage.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterKit.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift"
+      ],
+      "tempsPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.AudioAdjusterKitTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/sources",
+      "importPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterKit.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "AudioAdjusterKitTests",
+      "moduleOutputPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterKitTests.swiftmodule",
+      "objects" : [
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.2",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-F",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "audio_adjuster"
+      ],
+      "outputFileMapPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterKitTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift"
+      ],
+      "tempsPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.AudioAdjusterPackageTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/sources",
+      "importPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterKitTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "AudioAdjusterPackageTests",
+      "moduleOutputPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.2",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/include/AudioAdjusterPackageTests-Swift.h",
+        "-I",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-L",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-plugin-path",
+        "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-F",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "audio_adjuster"
+      ],
+      "outputFileMapPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules/AudioAdjusterPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "AudioAdjusterKit" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "AudioAdjusterKit",
+      "-package-name",
+      "audio_adjuster",
+      "-c",
+      "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift",
+      "-I",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.2",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/include/AudioAdjusterKit-Swift.h",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-F",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "audio_adjuster",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "AudioAdjusterKitTests" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "AudioAdjusterKitTests",
+      "-package-name",
+      "audio_adjuster",
+      "-c",
+      "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift",
+      "-I",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.2",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "5",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-F",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "audio_adjuster",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "AudioAdjusterPackageTests" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "AudioAdjusterPackageTests",
+      "-package-name",
+      "audio_adjuster",
+      "-c",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.2",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/include/AudioAdjusterPackageTests-Swift.h",
+      "-I",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-L",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-plugin-path",
+      "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-F",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "audio_adjuster",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "AudioAdjusterKit" : [
+
+    ],
+    "AudioAdjusterKitTests" : [
+      "AudioAdjusterKit"
+    ],
+    "AudioAdjusterPackageTests" : [
+      "AudioAdjusterKitTests",
+      "AudioAdjusterKit"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Sources/AudioAdjusterKit/GainStage.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/sources"
+    },
+    "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/sources"
+    },
+    "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/sources"
+    },
+    "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKit.build/GainStage.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.build/runner.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterPackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+    }
+  }
+}

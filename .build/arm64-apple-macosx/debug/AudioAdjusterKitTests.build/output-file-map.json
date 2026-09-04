@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/primary.swiftdeps"
+  },
+  "/Users/clementchang/audio-adjuster/Tests/AudioAdjusterKitTests/GainStageTests.swift": {
+    "dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.d",
+    "object": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swift.o",
+    "swiftmodule": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.swiftdeps",
+    "diagnostics": "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/debug/AudioAdjusterKitTests.build/GainStageTests.dia"
+  }
+}
