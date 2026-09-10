@@ -29,7 +29,7 @@ struct MenuBarContentView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                 }
-                .frame(maxHeight: 360)
+                .frame(minHeight: 60, maxHeight: 360)
             }
 
             Divider()
@@ -163,6 +163,10 @@ private struct AppRow: View {
 
 /// A horizontal bar whose fill is the volume. Dragging anywhere on it sets the level,
 /// including a press without movement, so a single click jumps to that position.
+///
+/// The row's size comes from `content`, not from a `GeometryReader`. A GeometryReader has
+/// no intrinsic size of its own, so using one as the sizing container inside a ScrollView
+/// lets the row collapse and render as nothing. Here it only measures, in the background.
 private struct VolumeBar<Content: View>: View {
     let level: Float
     let isMuted: Bool
@@ -171,30 +175,17 @@ private struct VolumeBar<Content: View>: View {
     let onChange: (Float) -> Void
     @ViewBuilder let content: Content
 
+    @State private var width: CGFloat = 0
+
     /// Where 100% sits on a bar that runs to 200%.
     private var unityFraction: CGFloat { CGFloat(1.0 / GainStage.maxGain) }
+    private var fraction: CGFloat { min(max(CGFloat(level / GainStage.maxGain), 0), 1) }
 
     var body: some View {
-        GeometryReader { geometry in
-            let width = geometry.size.width
-            let fraction = min(max(CGFloat(level / GainStage.maxGain), 0), 1)
-
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 7).fill(.quaternary)
-
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(fillStyle)
-                    .frame(width: max(3, width * fraction))
-
-                // Marks normal volume, so 100% is findable on a bar that goes to 200%.
-                Rectangle()
-                    .fill(.secondary.opacity(0.45))
-                    .frame(width: 1)
-                    .padding(.vertical, 4)
-                    .offset(x: width * unityFraction)
-
-                content.padding(.horizontal, 8)
-            }
+        content
+            .padding(.horizontal, 9)
+            .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+            .background(alignment: .leading) { track }
             .contentShape(RoundedRectangle(cornerRadius: 7))
             .gesture(
                 // minimumDistance 0 so a plain click sets the level too.
@@ -206,8 +197,36 @@ private struct VolumeBar<Content: View>: View {
                     }
             )
             .opacity(isEnabled ? 1 : 0.55)
+    }
+
+    private var track: some View {
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 7).fill(.quaternary)
+
+            RoundedRectangle(cornerRadius: 7)
+                .fill(fillStyle)
+                .frame(width: max(3, width * fraction))
+
+            // Marks normal volume, so 100% is findable on a bar that goes to 200%.
+            Rectangle()
+                .fill(.secondary.opacity(0.45))
+                .frame(width: 1)
+                .padding(.vertical, 5)
+                .offset(x: width * unityFraction)
         }
-        .frame(height: 28)
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear {
+                        width = geometry.size.width
+                        DebugLog.write("LAYOUT bar width=\(geometry.size.width) height=\(geometry.size.height)")
+                    }
+                    .onChange(of: geometry.size.width) { _, newWidth in
+                        width = newWidth
+                        DebugLog.write("LAYOUT bar width changed to \(newWidth)")
+                    }
+            }
+        }
     }
 
     private var fillStyle: AnyShapeStyle {
