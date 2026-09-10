@@ -17,6 +17,7 @@ final class AppModel: ObservableObject {
         didSet {
             guard isAntiDuckEnabled != settings.isAntiDuckEnabled else { return }
             settings.isAntiDuckEnabled = isAntiDuckEnabled
+            if !isAntiDuckEnabled { coordinator.releaseDuck() }
             coordinator.reconcile()
         }
     }
@@ -27,6 +28,12 @@ final class AppModel: ObservableObject {
     private lazy var registry = AudioProcessRegistry(source: system, names: RunningAppNameResolver())
 
     private var refreshTimer: Timer?
+    private var duckTimer: Timer?
+
+    /// Live anti-duck state, for the menu bar.
+    @Published private(set) var duckCompensation: Float = 1
+    @Published private(set) var isCallActive = false
+    @Published private(set) var isDuckCalibrated = false
     private var processListListener: AudioObjectPropertyListenerBlock?
     private var outputDeviceListener: AudioObjectPropertyListenerBlock?
 
@@ -59,6 +66,11 @@ final class AppModel: ObservableObject {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
+        // Anti-duck compensation can reach 30x, so the window between a call ending and
+        // us noticing has to be short. This tick is cheap: property reads and arithmetic.
+        duckTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.duckTick() }
+        }
         observeProcessList()
         observeDefaultOutputDevice()
     }
@@ -67,7 +79,17 @@ final class AppModel: ObservableObject {
     func shutDown() {
         refreshTimer?.invalidate()
         refreshTimer = nil
+        duckTimer?.invalidate()
+        duckTimer = nil
         coordinator.detachAll()
+    }
+
+    private func duckTick() {
+        coordinator.tick(processes: processes)
+        let active = processes.contains { settings.isProtected($0.bundleID) && $0.isPlaying }
+        if active != isCallActive { isCallActive = active }
+        if coordinator.duckCompensation != duckCompensation { duckCompensation = coordinator.duckCompensation }
+        if coordinator.isDuckCalibrated != isDuckCalibrated { isDuckCalibrated = coordinator.isDuckCalibrated }
     }
 
     // MARK: - Per-app controls

@@ -77,6 +77,64 @@ case "--raw":
         exit(1)
     }
 
+case "--servo":
+    // Runs the real closed loop: muted tap on the target, unmuted silent observer on
+    // ourselves, DuckServo driving compensation. Reports convergence per step.
+    guard arguments.count >= 3, let servoPID = pid_t(arguments[1]) else { usage() }
+    let servoPath = arguments[2]
+    let servoSeconds = arguments.count > 3 ? (Double(arguments[3]) ?? 6) : 6
+    var servoReport = "servo: target pid \(servoPID)\n"
+
+    if let servoEntry = system.rawProcesses().first(where: { $0.pid == servoPID }) {
+        let target = AppAudioChannel(
+            bundleID: servoEntry.bundleID ?? "pid-\(servoPID)",
+            processObjectID: servoEntry.objectID,
+            gain: 1.0
+        )
+        do {
+            let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
+            try target.attach(outputDeviceUID: uid)
+            Thread.sleep(forTimeInterval: 0.5)
+
+            guard let selfEntry = system.rawProcesses().first(where: { $0.pid == getpid() }) else {
+                throw CoreAudioError(status: -1, operation: "find own audio process")
+            }
+            let observer = AppAudioChannel(
+                bundleID: "self-observer",
+                processObjectID: selfEntry.objectID,
+                gain: 0,
+                options: .init(muteBehavior: .unmuted, isPrivate: true)
+            )
+            try observer.attach(outputDeviceUID: uid)
+
+            var servo = DuckServo()
+            var step = 0
+            while Double(step) * 0.2 < servoSeconds {
+                Thread.sleep(forTimeInterval: 0.2)
+                step += 1
+                let rendered = target.readStatistics().peak
+                let observed = observer.readStatistics().inputPeak
+                servo.update(renderedPeak: rendered, observedPeak: observed, isCallActive: true)
+                target.setCompensation(servo.compensation)
+                if step % 5 == 0 {
+                    servoReport += String(format: "  t=%.1fs rendered=%.4f observed=%.4f comp=%.1fx\n",
+                                          Double(step) * 0.2, rendered, observed, servo.compensation)
+                }
+            }
+            // Safety check: with no call, compensation must collapse at once.
+            servo.update(renderedPeak: 0.5, observedPeak: 0.5, isCallActive: false)
+            servoReport += String(format: "after call ends: comp=%.1fx\n", servo.compensation)
+
+            observer.detach()
+            target.detach()
+        } catch {
+            servoReport += "failed: \(error)\n"
+        }
+    } else {
+        servoReport += "target process not found\n"
+    }
+    try? servoReport.write(toFile: servoPath, atomically: true, encoding: .utf8)
+
 case "--selfduck":
     // Measures whether OUR OWN re-rendered output is ducked by the system.
     //
@@ -95,9 +153,9 @@ case "--selfduck":
         let renderChannel = AppAudioChannel(
             bundleID: duckEntry.bundleID ?? "pid-\(duckPID)",
             processObjectID: duckEntry.objectID,
-            gain: arguments.count > 3 ? (Float(arguments[3]) ?? 1.0) : 1.0,
-            options: .init(allowUnlimitedGain: true)
+            gain: 1.0
         )
+        renderChannel.setCompensation(arguments.count > 3 ? (Float(arguments[3]) ?? 1.0) : 1.0)
         do {
             let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
             try renderChannel.attach(outputDeviceUID: uid)

@@ -40,9 +40,46 @@ returns to normal the instant we stop. Releasing the tap is therefore a complete
 ## Anti-duck
 
 There is no supported macOS API to switch off the ducking another app causes; every
-ducking API in the SDK is the knob the *calling* app sets on itself. So anti-duck is a
-preset on the same gain engine: it boosts other apps back up and pulls the call app down.
-Defaults are in `AntiDuckPreset.default`.
+ducking API in the SDK is the knob the *calling* app sets on itself. What made this
+possible instead was measuring what ducking actually does, on a live FaceTime call:
+
+| measurement | peak |
+|---|---|
+| test tone, no call | 0.0275 |
+| captured via **unmuted** tap, during call | 0.0009 |
+| captured via **mutedWhenTapped**, during call | 0.0275 |
+| our own rendered output, observed back | ratio 0.0334 |
+
+Two facts follow. A muted tap captures audio *before* ducking is applied. And the system
+then ducks *our* output by the same amount, since during a call we are just "other audio".
+
+So the duck is a linear attenuation of about 0.033 that we can invert: capture pre-duck,
+boost by ~30x, and the system's own ducking brings it back to the original level. Core
+Audio's float buffers carry values past full scale without clipping (rendered peaks of
+0.82 / 1.65 / 3.29 came back as 0.0277 / 0.0557 / 0.1115 — linear throughout), so this
+works for loud sources too.
+
+The app measures the ratio live rather than assuming 30x, by attaching an unmuted, silent
+tap to itself and comparing what it wrote with what reached the device. Measured
+convergence on a real call: 29.2x -> 31.4x -> 31.6x, with observed output settling at
+0.0275 against an un-ducked reference of 0.0275.
+
+**The call app is never tapped.** Its audio is exempt from ducking right up until we
+re-render it as ours, at which point it gets ducked — so tapping it makes calls quieter,
+not louder. `avconferenced`, FaceTime and `TelephonyUtilities` are refused a channel.
+
+### The safety property
+
+Compensation reaches ~30x. If a call ends while that is applied, audio would be 30x too
+loud. `DuckServo` is asymmetric about this throughout:
+
+- compensation applies only while a call engine is actively producing audio, checked
+  every 200ms;
+- it rises gradually but falls in a single step;
+- it is hard-capped at 40x regardless of measurement;
+- unusable or non-finite measurements hold the current value instead of guessing;
+- the limiter acts on the user's gain only, never on compensation, which must stay linear
+  for the inversion to be exact.
 
 ## Layout
 

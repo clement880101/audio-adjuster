@@ -44,6 +44,12 @@ struct MenuBarContentView: View {
         .padding(.vertical, 8)
     }
 
+    private var antiDuckStatus: String {
+        guard model.isAntiDuckEnabled else { return "Restore audio muted by the call" }
+        guard model.isDuckCalibrated else { return "Measuring the call's ducking…" }
+        return String(format: "Compensating %.0f×", model.duckCompensation)
+    }
+
     private var emptyState: some View {
         Text("No apps are playing audio.")
             .font(.callout)
@@ -54,15 +60,19 @@ struct MenuBarContentView: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: $model.isAntiDuckEnabled) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Anti-duck")
-                    Text("Push other audio back up during calls")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            // Only shown during a call. Outside one there is no duck to cancel, and a
+            // switch that cannot do anything is worse than no switch.
+            if model.isCallActive {
+                Toggle(isOn: $model.isAntiDuckEnabled) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Anti-duck")
+                        Text(antiDuckStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .toggleStyle(.switch)
             }
-            .toggleStyle(.switch)
 
             HStack {
                 Spacer()

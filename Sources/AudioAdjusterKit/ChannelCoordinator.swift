@@ -17,6 +17,12 @@ public final class ChannelCoordinator {
     private let settings: SettingsStore
     private var channels: [String: AppAudioChannel] = [:]
     private var audits: [String: SilenceAudit] = [:]
+    /// Telemetry is read in exactly one place, because reading resets the peak.
+    private var sawAudio: [String: Bool] = [:]
+    private var lastFrames: [String: UInt64] = [:]
+
+    private var servo = DuckServo()
+    private var observer: AppAudioChannel?
     private var processes: [AudioProcess] = []
     private let log = Logger(subsystem: "com.audioadjuster", category: "coordinator")
 
@@ -31,6 +37,17 @@ public final class ChannelCoordinator {
     public var outputDeviceUID: () throws -> String = {
         try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
     }
+
+    /// Our own audio process object, needed to observe what we are putting on the device.
+    /// Only exists while we are actually rendering.
+    public var ownAudioProcessObjectID: () -> AudioObjectID? = {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        return CoreAudioSystem().rawProcesses().first { $0.pid == pid }?.objectID
+    }
+
+    /// Current anti-duck compensation, for display.
+    public var duckCompensation: Float { servo.compensation }
+    public var isDuckCalibrated: Bool { servo.hasCalibrated }
 
     public init(settings: SettingsStore) {
         self.settings = settings
@@ -88,6 +105,9 @@ public final class ChannelCoordinator {
         for bundleID in plan.detach {
             channels.removeValue(forKey: bundleID)?.detach()
             audits.removeValue(forKey: bundleID)
+            sawAudio.removeValue(forKey: bundleID)
+            lastFrames.removeValue(forKey: bundleID)
+            renderedPeaks.removeValue(forKey: bundleID)
         }
         for (bundleID, gain) in plan.update {
             channels[bundleID]?.setGain(gain)
@@ -115,9 +135,13 @@ public final class ChannelCoordinator {
 
     /// Releases every channel, restoring all apps to their normal audio path.
     public func detachAll() {
+        releaseDuck()
         for (_, channel) in channels { channel.detach() }
         channels.removeAll()
         audits.removeAll()
+        sawAudio.removeAll()
+        lastFrames.removeAll()
+        renderedPeaks.removeAll()
     }
 
     /// Releases any channel whose tap is delivering silence while its app is playing.
@@ -126,11 +150,18 @@ public final class ChannelCoordinator {
     /// the tap also mutes the app, the app would simply go quiet. Releasing the channel
     /// restores it. Call this on a regular tick.
     public func auditForSilentTaps(processes: [AudioProcess]) {
-        for (bundleID, channel) in channels {
+        for (bundleID, _) in channels {
             let isPlaying = processes.first { $0.bundleID == bundleID }?.isPlaying ?? false
-            let statistics = channel.readStatistics()
+            // Telemetry is gathered by tick(); using its accumulated view avoids two
+            // consumers racing to reset the same peak.
+            let heardAudio = sawAudio[bundleID] ?? false
+            sawAudio[bundleID] = false
             var audit = audits[bundleID] ?? SilenceAudit()
-            let hasFailed = audit.record(frames: statistics.frames, peak: statistics.peak, isPlaying: isPlaying)
+            let hasFailed = audit.record(
+                frames: lastFrames[bundleID] ?? 0,
+                peak: heardAudio ? 1 : 0,
+                isPlaying: isPlaying
+            )
             audits[bundleID] = audit
 
             guard hasFailed else { continue }
@@ -139,6 +170,77 @@ public final class ChannelCoordinator {
             audits.removeValue(forKey: bundleID)
             onSilenceDetected?(bundleID)
         }
+    }
+
+    // MARK: - Anti-duck
+
+    /// Reads channel telemetry and updates anti-duck compensation.
+    ///
+    /// Must be called often — the compensation can be 30x, so the gap between a call
+    /// ending and us noticing is the window in which audio would be far too loud.
+    public func tick(processes: [AudioProcess]) {
+        for (bundleID, channel) in channels {
+            let statistics = channel.readStatistics()
+            if statistics.peak > 0 { sawAudio[bundleID] = true }
+            lastFrames[bundleID] = statistics.frames
+            renderedPeaks[bundleID] = statistics.peak
+        }
+        updateDuckCompensation(processes: processes)
+    }
+
+    private var renderedPeaks: [String: Float] = [:]
+
+    private func updateDuckCompensation(processes: [AudioProcess]) {
+        // A call engine actually producing audio is the only condition under which there
+        // is a duck to cancel.
+        let isCallActive = settings.isAntiDuckEnabled && processes.contains {
+            settings.isProtected($0.bundleID) && $0.isPlaying
+        }
+
+        guard isCallActive else {
+            if servo.compensation != 1 || observer != nil { releaseDuck() }
+            return
+        }
+
+        attachObserverIfNeeded()
+        let renderedPeak = renderedPeaks.values.max() ?? 0
+        let observedPeak = observer?.readStatistics().inputPeak ?? 0
+        servo.update(renderedPeak: renderedPeak, observedPeak: observedPeak, isCallActive: true)
+        applyCompensation()
+    }
+
+    /// Attaches an unmuted, silent tap on ourselves, used purely to measure what our own
+    /// output actually sounds like at the device after the system has ducked it.
+    private func attachObserverIfNeeded() {
+        guard observer == nil, !channels.isEmpty else { return }
+        guard let objectID = ownAudioProcessObjectID() else { return }
+        // Unmuted so it changes nothing, gain 0 so it contributes silence.
+        let channel = AppAudioChannel(
+            bundleID: "self-observer",
+            processObjectID: objectID,
+            gain: 0,
+            options: .init(muteBehavior: .unmuted, isPrivate: true)
+        )
+        do {
+            try channel.attach(outputDeviceUID: try outputDeviceUID())
+            observer = channel
+        } catch {
+            log.error("anti-duck calibration unavailable: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func applyCompensation() {
+        for (bundleID, channel) in channels {
+            channel.setCompensation(settings.isProtected(bundleID) ? 1 : servo.compensation)
+        }
+    }
+
+    /// Drops compensation to unity everywhere and tears down the observer.
+    public func releaseDuck() {
+        servo.release()
+        for (_, channel) in channels { channel.setCompensation(1) }
+        observer?.detach()
+        observer = nil
     }
 
     private func attach(bundleID: String) {
@@ -151,8 +253,10 @@ public final class ChannelCoordinator {
         do {
             let uid = try outputDeviceUID()
             try channel.attach(outputDeviceUID: uid)
+            channel.setCompensation(settings.isProtected(bundleID) ? 1 : servo.compensation)
             channels[bundleID] = channel
             audits[bundleID] = SilenceAudit()
+            sawAudio[bundleID] = false
         } catch {
             log.error("could not control \(bundleID, privacy: .public): \(error.localizedDescription, privacy: .public)")
             onError?(bundleID, error)

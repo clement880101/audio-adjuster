@@ -28,7 +28,12 @@ public final class AppAudioChannel {
         /// Peak of the tapped audio before gain, so a channel can be used purely to
         /// measure what another process is putting on the device.
         var inputPeakLevel: Float
-        var unlimitedGain: Int32
+        /// Anti-duck compensation, applied after limiting.
+        ///
+        /// Kept separate from `targetGain` deliberately. The limiter must act on the
+        /// user's own gain, but compensation has to stay exactly linear - it is undone by
+        /// the system's ducking a moment later, and limiting it would break that.
+        var compensation: Float
         /// Buffer geometry captured on the first render, to check that the tap's layout
         /// and the device's layout actually correspond. Measuring gain proportionality
         /// alone cannot catch a dropped or mismatched channel.
@@ -64,13 +69,9 @@ public final class AppAudioChannel {
     public struct TapOptions {
         public var muteBehavior: CATapMuteBehavior
         public var isPrivate: Bool
-        /// Experimental: allows gain beyond full scale without limiting, to test whether a
-        /// large boost survives the system's ducking of our own output.
-        public var allowUnlimitedGain: Bool
-        public init(muteBehavior: CATapMuteBehavior = .mutedWhenTapped, isPrivate: Bool = true, allowUnlimitedGain: Bool = false) {
+        public init(muteBehavior: CATapMuteBehavior = .mutedWhenTapped, isPrivate: Bool = true) {
             self.muteBehavior = muteBehavior
             self.isPrivate = isPrivate
-            self.allowUnlimitedGain = allowUnlimitedGain
         }
         public static let `default` = TapOptions()
     }
@@ -87,7 +88,6 @@ public final class AppAudioChannel {
     private var isRunning = false
 
     private let state: UnsafeMutablePointer<IOState>
-    private var unlimited = false
 
     public var isAttached: Bool { tapID != AudioObjectID(kAudioObjectUnknown) }
 
@@ -97,10 +97,9 @@ public final class AppAudioChannel {
         self.options = options
         self.state = UnsafeMutablePointer<IOState>.allocate(capacity: 1)
         // Start the ramp at the target so attaching does not fade in from silence.
-        let clamped = options.allowUnlimitedGain ? gain : GainStage.clampGain(gain)
-        self.unlimited = options.allowUnlimitedGain
+        let clamped = GainStage.clampGain(gain)
         self.state.initialize(to: IOState(
-            targetGain: clamped, currentGain: clamped, framesRendered: 0, peakLevel: 0, inputPeakLevel: 0, unlimitedGain: options.allowUnlimitedGain ? 1 : 0,
+            targetGain: clamped, currentGain: clamped, framesRendered: 0, peakLevel: 0, inputPeakLevel: 0, compensation: 1,
             geometryCaptured: 0, inputBufferCount: 0, inputChannelsPerBuffer: 0, inputBytesPerBuffer: 0,
             outputBufferCount: 0, outputChannelsPerBuffer: 0, outputBytesPerBuffer: 0
         ))
@@ -114,8 +113,15 @@ public final class AppAudioChannel {
 
     /// Updates the gain. Safe to call from the UI thread while audio is running.
     public func setGain(_ gain: Float) {
-        state.pointee.targetGain = unlimited ? gain : GainStage.clampGain(gain)
+        state.pointee.targetGain = GainStage.clampGain(gain)
     }
+
+    /// Sets the anti-duck compensation multiplier, applied after limiting.
+    public func setCompensation(_ compensation: Float) {
+        state.pointee.compensation = compensation.isFinite ? max(1, min(compensation, DuckServo.maxCompensation)) : 1
+    }
+
+    public var compensation: Float { state.pointee.compensation }
 
     public var gain: Float { state.pointee.targetGain }
 
@@ -303,6 +309,7 @@ public final class AppAudioChannel {
         var frames: UInt64 = 0
         var peak = state.pointee.peakLevel
         var inputPeak = state.pointee.inputPeakLevel
+        let compensation = state.pointee.compensation
 
         if state.pointee.geometryCaptured == 0 {
             state.pointee.inputBufferCount = Int32(inputBuffers.count)
@@ -342,17 +349,17 @@ public final class AppAudioChannel {
             memcpy(destination, inputData, count * sampleSize)
             // The increment is derived per buffer, so channels of equal length ramp
             // identically and a short buffer still completes its ramp.
-            if state.pointee.unlimitedGain != 0 {
-                // Raw multiply, no limiter: the point is to see what survives downstream.
-                var currentGain = stage.current
-                let step = count > 0 ? (target - stage.current) / Float(count) : 0
+            // Stage one: the user's gain, limited, so a boost to 200% cannot clip harshly.
+            let increment = stage.increment(toward: target, frameCount: count)
+            stage.apply(to: destination, frameCount: count, increment: increment)
+
+            // Stage two: anti-duck compensation, applied linearly and deliberately not
+            // limited. This routinely exceeds full scale; the system's ducking brings it
+            // back down, and limiting here would defeat the whole mechanism.
+            if compensation != 1 {
                 for sampleIndex in 0..<count {
-                    destination[sampleIndex] *= currentGain
-                    currentGain += step
+                    destination[sampleIndex] *= compensation
                 }
-            } else {
-                let increment = stage.increment(toward: target, frameCount: count)
-                stage.apply(to: destination, frameCount: count, increment: increment)
             }
 
             for sampleIndex in 0..<count {

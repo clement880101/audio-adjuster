@@ -5,6 +5,11 @@ import Foundation
 public struct CoreAudioError: Error, CustomStringConvertible {
     public let status: OSStatus
     public let operation: String
+
+    public init(status: OSStatus, operation: String) {
+        self.status = status
+        self.operation = operation
+    }
     public var description: String { "\(operation) failed with OSStatus \(status)" }
 }
 
