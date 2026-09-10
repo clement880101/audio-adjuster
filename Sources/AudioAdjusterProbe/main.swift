@@ -77,6 +77,153 @@ case "--raw":
         exit(1)
     }
 
+case "--selfduck":
+    // Measures whether OUR OWN re-rendered output is ducked by the system.
+    //
+    // Channel A takes a muted tap on the target and renders it normally, so we are
+    // putting audio on the device like the real app does. Channel B then takes an
+    // UNMUTED tap on this very process at gain 0 - it writes silence, so it adds nothing
+    // audible, and reports only the pre-gain peak of what we are placing on the device.
+    //
+    // If B's input peak matches A's, our output is not ducked. If it is roughly 30x
+    // lower, the system is ducking us and gain compensation cannot win.
+    guard arguments.count >= 3, let duckPID = pid_t(arguments[1]) else { usage() }
+    let duckPath = arguments[2]
+    var duckReport = "selfduck: target pid \(duckPID), own pid \(getpid())\n"
+
+    if let duckEntry = system.rawProcesses().first(where: { $0.pid == duckPID }) {
+        let renderChannel = AppAudioChannel(
+            bundleID: duckEntry.bundleID ?? "pid-\(duckPID)",
+            processObjectID: duckEntry.objectID,
+            gain: arguments.count > 3 ? (Float(arguments[3]) ?? 1.0) : 1.0,
+            options: .init(allowUnlimitedGain: true)
+        )
+        do {
+            let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
+            try renderChannel.attach(outputDeviceUID: uid)
+            Thread.sleep(forTimeInterval: 2.0)
+            let renderStatistics = renderChannel.readStatistics()
+            duckReport += String(format: "A: rendering target - inputPeak=%.4f outputPeak=%.4f\n",
+                                 renderStatistics.inputPeak, renderStatistics.peak)
+
+            // Our own process now appears in the process list because we are producing audio.
+            if let selfEntry = system.rawProcesses().first(where: { $0.pid == getpid() }) {
+                let observeChannel = AppAudioChannel(
+                    bundleID: "self-observer",
+                    processObjectID: selfEntry.objectID,
+                    gain: 0.0,
+                    options: .init(muteBehavior: .unmuted, isPrivate: true)
+                )
+                try observeChannel.attach(outputDeviceUID: uid)
+                Thread.sleep(forTimeInterval: 2.0)
+                let observeStatistics = observeChannel.readStatistics()
+                observeChannel.detach()
+                duckReport += String(format: "B: observing ourselves - inputPeak=%.4f frames=%llu\n",
+                                     observeStatistics.inputPeak, observeStatistics.frames)
+                let ratio = renderStatistics.peak > 0 ? observeStatistics.inputPeak / renderStatistics.peak : 0
+                duckReport += String(format: "ratio B/A = %.4f  -> %@\n", ratio,
+                                     (ratio > 0.5 ? "OUR OUTPUT IS NOT DUCKED" :
+                                      ratio > 0 ? "OUR OUTPUT IS DUCKED" : "inconclusive") as NSString)
+            } else {
+                duckReport += "B: our own process object not found\n"
+            }
+            renderChannel.detach()
+        } catch {
+            duckReport += "attach failed: \(error)\n"
+        }
+    } else {
+        duckReport += "target process not found\n"
+    }
+    try? duckReport.write(toFile: duckPath, atomically: true, encoding: .utf8)
+
+case "--call-diag":
+    // Safe to run during a live call: every tap here is UNMUTED, so nothing about the
+    // call's audio changes. Finds which processes are actually producing sound and
+    // whether a tap can capture each one.
+    let callPath = arguments.count >= 2 ? arguments[1] : "/tmp/call-diag.txt"
+    var callReport = "call diagnostic\n"
+    let candidates = system.rawProcesses().filter { $0.isRunningOutput && $0.pid != getpid() }
+    callReport += "processes producing output: \(candidates.count)\n"
+
+    if candidates.isEmpty {
+        callReport += "  (none - is audio actually playing right now?)\n"
+    }
+    for candidate in candidates {
+        let name = candidate.pid > 0
+            ? (NSRunningApplication(processIdentifier: candidate.pid)?.localizedName ?? "-")
+            : "-"
+        let callChannel = AppAudioChannel(
+            bundleID: candidate.bundleID ?? "pid-\(candidate.pid)",
+            processObjectID: candidate.objectID,
+            gain: 1.0,
+            options: .init(muteBehavior: .unmuted, isPrivate: true)
+        )
+        var line = String(format: "  pid=%-7d %-34@ %@",
+                          candidate.pid,
+                          (candidate.bundleID ?? "<none>") as NSString,
+                          name as NSString)
+        do {
+            let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
+            try callChannel.attach(outputDeviceUID: uid)
+            Thread.sleep(forTimeInterval: 2.0)
+            let statistics = callChannel.readStatistics()
+            let geometry = callChannel.renderGeometry()
+            callChannel.detach()
+            line += String(format: " frames=%llu peak=%.4f", statistics.frames, statistics.peak)
+            if let geometry {
+                line += " in=\(geometry.inputChannels)ch out=\(geometry.outputChannels)ch"
+            }
+            line += statistics.peak > 0 ? "  <- CAPTURED" : "  <- SILENT (tap cannot see this audio)"
+        } catch {
+            line += " attach failed: \(error)"
+        }
+        callReport += line + "\n"
+    }
+    try? callReport.write(toFile: callPath, atomically: true, encoding: .utf8)
+
+case "--geometry":
+    // Reports the tap format alongside the actual buffer layout the IO proc sees, plus a
+    // fidelity check: with gain 1.0 the rendered peak should match the source's own peak.
+    guard arguments.count >= 3, let geoPID = pid_t(arguments[1]) else { usage() }
+    let geoPath = arguments[2]
+    var geoReport = "geometry: target pid \(geoPID)\n"
+
+    if let geoEntry = system.rawProcesses().first(where: { $0.pid == geoPID }) {
+        let geoChannel = AppAudioChannel(
+            bundleID: geoEntry.bundleID ?? "pid-\(geoPID)",
+            processObjectID: geoEntry.objectID,
+            gain: 1.0
+        )
+        do {
+            let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
+            try geoChannel.attach(outputDeviceUID: uid)
+            if let format = geoChannel.tapFormat() {
+                let interleaved = (format.mFormatFlags & kAudioFormatFlagIsNonInterleaved) == 0
+                geoReport += "tap format: \(Int(format.mSampleRate))Hz channels=\(format.mChannelsPerFrame) "
+                geoReport += "bits=\(format.mBitsPerChannel) bytesPerFrame=\(format.mBytesPerFrame) "
+                geoReport += "interleaved=\(interleaved) flags=\(format.mFormatFlags)\n"
+            }
+            let counts = geoChannel.aggregateChannelCounts()
+            geoReport += "aggregate channels: in=\(counts.input) out=\(counts.output)\n"
+            Thread.sleep(forTimeInterval: 2.0)
+            if let geometry = geoChannel.renderGeometry() {
+                geoReport += "render input:  buffers=\(geometry.inputBuffers) channelsPerBuffer=\(geometry.inputChannelsPerBuffer) bytes=\(geometry.inputBytesPerBuffer)\n"
+                geoReport += "render output: buffers=\(geometry.outputBuffers) channelsPerBuffer=\(geometry.outputChannelsPerBuffer) bytes=\(geometry.outputBytesPerBuffer)\n"
+                geoReport += "total channels in=\(geometry.inputChannels) out=\(geometry.outputChannels) mismatched=\(geometry.isMismatched)\n"
+            } else {
+                geoReport += "IO proc never ran\n"
+            }
+            let statistics = geoChannel.readStatistics()
+            geoReport += String(format: "frames=%llu peak=%.4f\n", statistics.frames, statistics.peak)
+            geoChannel.detach()
+        } catch {
+            geoReport += "attach failed: \(error)\n"
+        }
+    } else {
+        geoReport += "target process not found\n"
+    }
+    try? geoReport.write(toFile: geoPath, atomically: true, encoding: .utf8)
+
 case "--verify":
     // End-to-end check of the shipping configuration: a private, mutedWhenTapped tap at a
     // sweep of gains. If the measured peak tracks the requested gain, the whole path works.

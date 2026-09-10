@@ -17,27 +17,38 @@ public struct AppGainSetting: Codable, Equatable, Sendable {
     public var isUnchanged: Bool { self == .unchanged }
 }
 
-/// The gain preset applied when anti-duck is switched on.
+/// Configuration for the anti-duck feature.
 ///
-/// macOS ducks *other* audio during a call, so countering it means pushing everything
-/// else back up, and optionally pulling the call app down so the mix still balances.
+/// The shape of this reflects a measured fact: during a call, macOS applies a linear
+/// attenuation of roughly 0.033 (about -30 dB) to every process that is not the call
+/// itself — including us. Two consequences follow.
+///
+/// First, the call app must never be tapped. Its audio is exempt from ducking, but
+/// re-rendering it makes it *our* audio, which is then ducked. Measured on a live call:
+/// tapping the call engine made the call quieter, not louder.
+///
+/// Second, countering the duck for other apps means boosting by roughly 1/0.033, far
+/// beyond the normal gain range.
 public struct AntiDuckPreset: Codable, Equatable, Sendable {
-    /// Apps whose calls trigger the system's ducking.
-    public var callAppBundleIDs: Set<String>
-    /// Multiplier applied to the call app itself.
-    public var callAppGain: Float
-    /// Multiplier applied to every other app, to undo the system's duck.
+
+    /// Apps that must never be tapped, because they are the source of the call audio.
+    public var protectedBundleIDs: Set<String>
+
+    /// Multiplier applied to other apps while anti-duck is on.
     public var othersBoost: Float
 
-    public init(callAppBundleIDs: Set<String>, callAppGain: Float, othersBoost: Float) {
-        self.callAppBundleIDs = callAppBundleIDs
-        self.callAppGain = callAppGain
+    public init(protectedBundleIDs: Set<String>, othersBoost: Float) {
+        self.protectedBundleIDs = protectedBundleIDs
         self.othersBoost = othersBoost
     }
 
     public static let `default` = AntiDuckPreset(
-        callAppBundleIDs: ["com.apple.FaceTime"],
-        callAppGain: 0.8,
+        protectedBundleIDs: [
+            "com.apple.FaceTime",
+            // The call engine that actually renders FaceTime audio.
+            "com.apple.avconferenced",
+            "com.apple.TelephonyUtilities",
+        ],
         othersBoost: 1.6
     )
 }
@@ -92,6 +103,13 @@ public final class SettingsStore {
         apps[bundleID] ?? .unchanged
     }
 
+    /// True for apps we refuse to tap. Tapping a call engine strips its exemption from
+    /// ducking and makes the call quieter, so the slider is refused rather than offered
+    /// and then quietly doing harm.
+    public func isProtected(_ bundleID: String) -> Bool {
+        preset.protectedBundleIDs.contains(bundleID)
+    }
+
     public func setGain(_ gain: Float, for bundleID: String) {
         var setting = self.setting(for: bundleID)
         setting.gain = GainStage.clampGain(gain)
@@ -117,18 +135,17 @@ public final class SettingsStore {
 
     /// The gain the audio path should apply, folding in mute and the anti-duck preset.
     public func effectiveGain(for bundleID: String) -> Float {
+        guard !isProtected(bundleID) else { return 1.0 }
         let setting = self.setting(for: bundleID)
         if setting.isMuted { return 0 }
         guard isAntiDuckEnabled else { return GainStage.clampGain(setting.gain) }
-        let multiplier = preset.callAppBundleIDs.contains(bundleID)
-            ? preset.callAppGain
-            : preset.othersBoost
-        return GainStage.clampGain(setting.gain * multiplier)
+        return GainStage.clampGain(setting.gain * preset.othersBoost)
     }
 
     /// True when this app needs a tap: either the user changed it, or anti-duck is on and
     /// would move it away from unity.
     public func requiresChannel(for bundleID: String) -> Bool {
+        guard !isProtected(bundleID) else { return false }
         if !setting(for: bundleID).isUnchanged { return true }
         return isAntiDuckEnabled && effectiveGain(for: bundleID) != 1.0
     }

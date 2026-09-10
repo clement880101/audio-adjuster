@@ -97,6 +97,12 @@ private struct AppRow: View {
                     .foregroundStyle(.secondary)
             }
 
+            if model.isProtected(process.bundleID) {
+                Text("Call audio — adjusting this makes calls quieter")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
             HStack(spacing: 8) {
                 Button {
                     model.toggleMute(process.bundleID)
@@ -104,6 +110,7 @@ private struct AppRow: View {
                     Image(systemName: model.isMuted(process.bundleID) ? "speaker.slash.fill" : "speaker.fill")
                 }
                 .buttonStyle(.borderless)
+                .disabled(model.isProtected(process.bundleID))
                 .help(model.isMuted(process.bundleID) ? "Unmute" : "Mute")
 
                 Slider(
@@ -113,7 +120,7 @@ private struct AppRow: View {
                     ),
                     in: 0...Double(GainStage.maxGain)
                 )
-                .disabled(model.isMuted(process.bundleID))
+                .disabled(model.isMuted(process.bundleID) || model.isProtected(process.bundleID))
             }
 
             if let failure = model.failure(for: process.bundleID) {

@@ -4,6 +4,7 @@ import Testing
 
 private let faceTime = "com.apple.FaceTime"
 private let music = "com.apple.Music"
+private let music2 = "com.spotify.client"
 
 private func makeStore() -> (SettingsStore, InMemorySettingsBackend) {
     let backend = InMemorySettingsBackend()
@@ -65,12 +66,33 @@ struct SettingsStoreTests {
         #expect(store.setting(for: music) == .unchanged)
     }
 
-    @Test("anti-duck boosts other apps and pulls the call app down")
+    @Test("anti-duck boosts other apps")
     func antiDuckApplies() {
         let (store, _) = makeStore()
         store.isAntiDuckEnabled = true
         #expect(store.effectiveGain(for: music) == GainStage.clampGain(AntiDuckPreset.default.othersBoost))
-        #expect(store.effectiveGain(for: faceTime) == AntiDuckPreset.default.callAppGain)
+    }
+
+    @Test("the call app is never tapped, whatever the settings say")
+    func callAppIsProtected() {
+        let (store, _) = makeStore()
+        #expect(store.isProtected("com.apple.avconferenced"))
+        #expect(store.isProtected(faceTime))
+        // Tapping the call engine strips its exemption from ducking and makes the call
+        // quieter, so no setting may cause a channel for it.
+        store.setGain(2.0, for: "com.apple.avconferenced")
+        #expect(store.effectiveGain(for: "com.apple.avconferenced") == 1.0)
+        #expect(store.requiresChannel(for: "com.apple.avconferenced") == false)
+        store.setMuted(true, for: faceTime)
+        #expect(store.requiresChannel(for: faceTime) == false)
+    }
+
+    @Test("anti-duck does not create a channel for the call app")
+    func antiDuckSkipsCallApp() {
+        let (store, _) = makeStore()
+        store.isAntiDuckEnabled = true
+        #expect(store.requiresChannel(for: "com.apple.avconferenced") == false)
+        #expect(store.requiresChannel(for: music))
     }
 
     @Test("anti-duck multiplies the user's own gain rather than replacing it")
@@ -110,15 +132,15 @@ struct SettingsStoreTests {
         let backend = InMemorySettingsBackend()
         let first = SettingsStore(backend: backend)
         first.setGain(0.3, for: music)
-        first.setMuted(true, for: faceTime)
+        first.setMuted(true, for: music2)
         first.isAntiDuckEnabled = true
-        first.preset = AntiDuckPreset(callAppBundleIDs: ["x"], callAppGain: 0.5, othersBoost: 1.2)
+        first.preset = AntiDuckPreset(protectedBundleIDs: ["x"], othersBoost: 1.2)
 
         let reloaded = SettingsStore(backend: backend)
         #expect(reloaded.setting(for: music).gain == 0.3)
-        #expect(reloaded.setting(for: faceTime).isMuted)
+        #expect(reloaded.setting(for: music2).isMuted)
         #expect(reloaded.isAntiDuckEnabled)
-        #expect(reloaded.preset.callAppBundleIDs == ["x"])
+        #expect(reloaded.preset.protectedBundleIDs == ["x"])
     }
 
     @Test("corrupt stored data falls back to defaults instead of crashing")

@@ -25,6 +25,38 @@ public final class AppAudioChannel {
         /// through our path rather than the graph merely having been built.
         var framesRendered: UInt64
         var peakLevel: Float
+        /// Peak of the tapped audio before gain, so a channel can be used purely to
+        /// measure what another process is putting on the device.
+        var inputPeakLevel: Float
+        var unlimitedGain: Int32
+        /// Buffer geometry captured on the first render, to check that the tap's layout
+        /// and the device's layout actually correspond. Measuring gain proportionality
+        /// alone cannot catch a dropped or mismatched channel.
+        var geometryCaptured: Int32
+        var inputBufferCount: Int32
+        var inputChannelsPerBuffer: Int32
+        var inputBytesPerBuffer: Int32
+        var outputBufferCount: Int32
+        var outputChannelsPerBuffer: Int32
+        var outputBytesPerBuffer: Int32
+    }
+
+    /// Buffer layout as seen by the IO proc.
+    public struct RenderGeometry: Equatable {
+        public let inputBuffers: Int
+        public let inputChannelsPerBuffer: Int
+        public let inputBytesPerBuffer: Int
+        public let outputBuffers: Int
+        public let outputChannelsPerBuffer: Int
+        public let outputBytesPerBuffer: Int
+
+        public var inputChannels: Int { inputBuffers * inputChannelsPerBuffer }
+        public var outputChannels: Int { outputBuffers * outputChannelsPerBuffer }
+        /// True when input and output disagree about how channels are packed, which means
+        /// pairing buffers by index silently drops or misplaces audio.
+        public var isMismatched: Bool {
+            inputBuffers != outputBuffers || inputChannelsPerBuffer != outputChannelsPerBuffer
+        }
     }
 
     /// How the tap is built. Defaults are what the app ships with; the probe varies them
@@ -32,9 +64,13 @@ public final class AppAudioChannel {
     public struct TapOptions {
         public var muteBehavior: CATapMuteBehavior
         public var isPrivate: Bool
-        public init(muteBehavior: CATapMuteBehavior = .mutedWhenTapped, isPrivate: Bool = true) {
+        /// Experimental: allows gain beyond full scale without limiting, to test whether a
+        /// large boost survives the system's ducking of our own output.
+        public var allowUnlimitedGain: Bool
+        public init(muteBehavior: CATapMuteBehavior = .mutedWhenTapped, isPrivate: Bool = true, allowUnlimitedGain: Bool = false) {
             self.muteBehavior = muteBehavior
             self.isPrivate = isPrivate
+            self.allowUnlimitedGain = allowUnlimitedGain
         }
         public static let `default` = TapOptions()
     }
@@ -51,6 +87,7 @@ public final class AppAudioChannel {
     private var isRunning = false
 
     private let state: UnsafeMutablePointer<IOState>
+    private var unlimited = false
 
     public var isAttached: Bool { tapID != AudioObjectID(kAudioObjectUnknown) }
 
@@ -60,8 +97,13 @@ public final class AppAudioChannel {
         self.options = options
         self.state = UnsafeMutablePointer<IOState>.allocate(capacity: 1)
         // Start the ramp at the target so attaching does not fade in from silence.
-        let clamped = GainStage.clampGain(gain)
-        self.state.initialize(to: IOState(targetGain: clamped, currentGain: clamped, framesRendered: 0, peakLevel: 0))
+        let clamped = options.allowUnlimitedGain ? gain : GainStage.clampGain(gain)
+        self.unlimited = options.allowUnlimitedGain
+        self.state.initialize(to: IOState(
+            targetGain: clamped, currentGain: clamped, framesRendered: 0, peakLevel: 0, inputPeakLevel: 0, unlimitedGain: options.allowUnlimitedGain ? 1 : 0,
+            geometryCaptured: 0, inputBufferCount: 0, inputChannelsPerBuffer: 0, inputBytesPerBuffer: 0,
+            outputBufferCount: 0, outputChannelsPerBuffer: 0, outputBytesPerBuffer: 0
+        ))
     }
 
     deinit {
@@ -72,16 +114,30 @@ public final class AppAudioChannel {
 
     /// Updates the gain. Safe to call from the UI thread while audio is running.
     public func setGain(_ gain: Float) {
-        state.pointee.targetGain = GainStage.clampGain(gain)
+        state.pointee.targetGain = unlimited ? gain : GainStage.clampGain(gain)
     }
 
     public var gain: Float { state.pointee.targetGain }
 
+    /// Buffer layout observed by the IO proc, once it has run at least once.
+    public func renderGeometry() -> RenderGeometry? {
+        guard state.pointee.geometryCaptured != 0 else { return nil }
+        return RenderGeometry(
+            inputBuffers: Int(state.pointee.inputBufferCount),
+            inputChannelsPerBuffer: Int(state.pointee.inputChannelsPerBuffer),
+            inputBytesPerBuffer: Int(state.pointee.inputBytesPerBuffer),
+            outputBuffers: Int(state.pointee.outputBufferCount),
+            outputChannelsPerBuffer: Int(state.pointee.outputChannelsPerBuffer),
+            outputBytesPerBuffer: Int(state.pointee.outputBytesPerBuffer)
+        )
+    }
+
     /// Frames pushed to the output and the loudest sample seen since the last read.
     /// Reading resets the peak so successive samples show a live level.
-    public func readStatistics() -> (frames: UInt64, peak: Float) {
-        let statistics = (state.pointee.framesRendered, state.pointee.peakLevel)
+    public func readStatistics() -> (frames: UInt64, peak: Float, inputPeak: Float) {
+        let statistics = (state.pointee.framesRendered, state.pointee.peakLevel, state.pointee.inputPeakLevel)
         state.pointee.peakLevel = 0
+        state.pointee.inputPeakLevel = 0
         return statistics
     }
 
@@ -246,6 +302,21 @@ public final class AppAudioChannel {
         let sampleSize = MemoryLayout<Float>.size
         var frames: UInt64 = 0
         var peak = state.pointee.peakLevel
+        var inputPeak = state.pointee.inputPeakLevel
+
+        if state.pointee.geometryCaptured == 0 {
+            state.pointee.inputBufferCount = Int32(inputBuffers.count)
+            state.pointee.outputBufferCount = Int32(outputBuffers.count)
+            if inputBuffers.count > 0 {
+                state.pointee.inputChannelsPerBuffer = Int32(inputBuffers[0].mNumberChannels)
+                state.pointee.inputBytesPerBuffer = Int32(inputBuffers[0].mDataByteSize)
+            }
+            if outputBuffers.count > 0 {
+                state.pointee.outputChannelsPerBuffer = Int32(outputBuffers[0].mNumberChannels)
+                state.pointee.outputBytesPerBuffer = Int32(outputBuffers[0].mDataByteSize)
+            }
+            state.pointee.geometryCaptured = 1
+        }
 
         for index in 0..<outputBuffers.count {
             let outputBuffer = outputBuffers[index]
@@ -263,11 +334,26 @@ public final class AppAudioChannel {
             let count = min(inputSamples, outputSamples)
             let destination = outputData.assumingMemoryBound(to: Float.self)
 
+            let source = inputData.assumingMemoryBound(to: Float.self)
+            for sampleIndex in 0..<count {
+                let magnitude = abs(source[sampleIndex])
+                if magnitude > inputPeak { inputPeak = magnitude }
+            }
             memcpy(destination, inputData, count * sampleSize)
             // The increment is derived per buffer, so channels of equal length ramp
             // identically and a short buffer still completes its ramp.
-            let increment = stage.increment(toward: target, frameCount: count)
-            stage.apply(to: destination, frameCount: count, increment: increment)
+            if state.pointee.unlimitedGain != 0 {
+                // Raw multiply, no limiter: the point is to see what survives downstream.
+                var currentGain = stage.current
+                let step = count > 0 ? (target - stage.current) / Float(count) : 0
+                for sampleIndex in 0..<count {
+                    destination[sampleIndex] *= currentGain
+                    currentGain += step
+                }
+            } else {
+                let increment = stage.increment(toward: target, frameCount: count)
+                stage.apply(to: destination, frameCount: count, increment: increment)
+            }
 
             for sampleIndex in 0..<count {
                 let magnitude = abs(destination[sampleIndex])
@@ -284,5 +370,6 @@ public final class AppAudioChannel {
         state.pointee.currentGain = stage.current
         state.pointee.framesRendered &+= frames
         state.pointee.peakLevel = peak
+        state.pointee.inputPeakLevel = inputPeak
     }
 }

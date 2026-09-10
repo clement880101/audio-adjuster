@@ -74,6 +74,8 @@ final class AppModel: ObservableObject {
 
     func gain(for bundleID: String) -> Float { settings.setting(for: bundleID).gain }
     func isMuted(_ bundleID: String) -> Bool { settings.setting(for: bundleID).isMuted }
+    /// Apps we refuse to tap because doing so degrades call audio.
+    func isProtected(_ bundleID: String) -> Bool { settings.isProtected(bundleID) }
     func isControlled(_ bundleID: String) -> Bool { coordinator.controlledBundleIDs.contains(bundleID) }
     func failure(for bundleID: String) -> String? { failures[bundleID] }
 
