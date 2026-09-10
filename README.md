@@ -37,6 +37,30 @@ returns to normal the instant we stop. Releasing the tap is therefore a complete
 
 **Apps you never touch are never tapped.** Nothing about their audio path changes.
 
+## Balance
+
+With **Balance** on, the sliders are linked: turning one app up turns the others down by
+the same total, so the mix keeps a constant sum. The header shows that total.
+
+Gains stay absolute — 100% means "as macOS would play it" — so three apps sit at 100% each
+rather than 33% each, and opening a fourth app does not quietly make the first three
+quieter. Only a deliberate drag moves anything.
+
+The difference is shared equally across the other apps rather than proportionally, which
+is more predictable while dragging. An app that reaches silence or the ceiling stops
+absorbing and passes its residual to apps that still have room.
+
+Two cases worth knowing:
+
+- **A single app is freely adjustable.** Forcing sliders to always sum to 100% would pin a
+  lone app at 100% forever, which would remove the ability to simply turn one thing down.
+  Balancing pushes the *other* apps, so with no others the drag just applies.
+- **The total can rise.** If every other app is already silent there is nowhere left to
+  take volume from, so the drag still does what was asked and the sum grows.
+
+Call engines never participate: they cannot be tapped at all, so they can neither give nor
+take volume.
+
 ## Anti-duck
 
 There is no supported macOS API to switch off the ducking another app causes; every

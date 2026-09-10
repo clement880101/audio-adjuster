@@ -80,6 +80,7 @@ public final class SettingsStore {
         static let apps = "apps"
         static let preset = "antiDuckPreset"
         static let antiDuckEnabled = "antiDuckEnabled"
+        static let balanceEnabled = "balanceEnabled"
     }
 
     private let backend: SettingsBackend
@@ -87,6 +88,8 @@ public final class SettingsStore {
 
     public var preset: AntiDuckPreset { didSet { persistPreset() } }
     public var isAntiDuckEnabled: Bool { didSet { persistAntiDuckEnabled() } }
+    /// When on, raising one app's volume lowers the others by the same total.
+    public var isBalanceEnabled: Bool { didSet { persistBalanceEnabled() } }
 
     public init(backend: SettingsBackend = UserDefaults.standard) {
         self.backend = backend
@@ -96,6 +99,8 @@ public final class SettingsStore {
         self.preset = backend.loadData(forKey: Key.preset)
             .flatMap { try? decoder.decode(AntiDuckPreset.self, from: $0) } ?? .default
         self.isAntiDuckEnabled = backend.loadData(forKey: Key.antiDuckEnabled)
+            .flatMap { try? decoder.decode(Bool.self, from: $0) } ?? false
+        self.isBalanceEnabled = backend.loadData(forKey: Key.balanceEnabled)
             .flatMap { try? decoder.decode(Bool.self, from: $0) } ?? false
     }
 
@@ -120,6 +125,20 @@ public final class SettingsStore {
         var setting = self.setting(for: bundleID)
         setting.isMuted = isMuted
         update(setting, for: bundleID)
+    }
+
+    /// Writes several gains at once, for a balanced drag that moves every app.
+    public func setGains(_ gains: [String: Float]) {
+        for (bundleID, gain) in gains where !isProtected(bundleID) {
+            var setting = self.setting(for: bundleID)
+            setting.gain = GainStage.clampGain(gain)
+            if setting.isUnchanged {
+                apps.removeValue(forKey: bundleID)
+            } else {
+                apps[bundleID] = setting
+            }
+        }
+        persistApps()
     }
 
     public func reset(_ bundleID: String) {
@@ -169,5 +188,9 @@ public final class SettingsStore {
 
     private func persistAntiDuckEnabled() {
         backend.saveData(try? JSONEncoder().encode(isAntiDuckEnabled), forKey: Key.antiDuckEnabled)
+    }
+
+    private func persistBalanceEnabled() {
+        backend.saveData(try? JSONEncoder().encode(isBalanceEnabled), forKey: Key.balanceEnabled)
     }
 }

@@ -13,6 +13,13 @@ final class AppModel: ObservableObject {
     /// Apps that could not be controlled, so the UI can say so instead of showing a
     /// slider that does nothing.
     @Published private(set) var failures: [String: String] = [:]
+    @Published var isBalanceEnabled: Bool {
+        didSet {
+            guard isBalanceEnabled != settings.isBalanceEnabled else { return }
+            settings.isBalanceEnabled = isBalanceEnabled
+            objectWillChange.send()
+        }
+    }
     @Published var isAntiDuckEnabled: Bool {
         didSet {
             guard isAntiDuckEnabled != settings.isAntiDuckEnabled else { return }
@@ -42,6 +49,7 @@ final class AppModel: ObservableObject {
         self.settings = settings
         self.coordinator = ChannelCoordinator(settings: settings)
         self.isAntiDuckEnabled = settings.isAntiDuckEnabled
+        self.isBalanceEnabled = settings.isBalanceEnabled
 
         coordinator.onError = { [weak self] bundleID, error in
             Task { @MainActor in self?.failures[bundleID] = "\(error)" }
@@ -102,10 +110,28 @@ final class AppModel: ObservableObject {
     func failure(for bundleID: String) -> String? { failures[bundleID] }
 
     func setGain(_ gain: Float, for bundleID: String) {
-        settings.setGain(gain, for: bundleID)
+        if isBalanceEnabled {
+            // Balance across the apps actually on screen. Call engines are excluded because
+            // they can never be tapped, so they cannot give or take volume.
+            let participants = processes.map(\.bundleID).filter { !settings.isProtected($0) }
+            var current: [String: Float] = [:]
+            for id in participants { current[id] = settings.setting(for: id).gain }
+            settings.setGains(Balance.apply(gains: current, changed: bundleID, newGain: gain))
+        } else {
+            settings.setGain(gain, for: bundleID)
+        }
         failures.removeValue(forKey: bundleID)
         coordinator.reconcile()
         objectWillChange.send()
+    }
+
+    /// Sum of the gains of every app that can be balanced, shown so the constant total is
+    /// visible rather than implied.
+    var balanceTotal: Float {
+        processes
+            .map(\.bundleID)
+            .filter { !settings.isProtected($0) }
+            .reduce(0) { $0 + settings.setting(for: $1).gain }
     }
 
     func toggleMute(_ bundleID: String) {

@@ -33,6 +33,11 @@ struct MenuBarContentView: View {
     private var header: some View {
         HStack {
             Text("Volume").font(.headline)
+            if model.isBalanceEnabled, model.processes.count > 1 {
+                Text(String(format: "total %.0f%%", model.balanceTotal * 100))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             if model.hasAdjustments {
                 Button("Reset") { model.resetAll() }
@@ -60,6 +65,16 @@ struct MenuBarContentView: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: $model.isBalanceEnabled) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Balance")
+                    Text("Turning one app up turns the others down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch)
+
             // Only shown during a call. Outside one there is no duck to cancel, and a
             // switch that cannot do anything is worse than no switch.
             if model.isCallActive {
