@@ -11,17 +11,22 @@ struct MenuBarContentView: View {
             Divider()
 
             if model.processes.isEmpty {
-                emptyState
+                Text("No apps are playing audio.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
             } else {
                 ScrollView {
-                    VStack(spacing: 2) {
+                    VStack(spacing: 6) {
                         ForEach(model.processes) { process in
                             AppRow(model: model, process: process)
                         }
                     }
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
                 }
-                .frame(maxHeight: 340)
+                .frame(maxHeight: 360)
             }
 
             Divider()
@@ -31,9 +36,9 @@ struct MenuBarContentView: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 6) {
             Text("Volume").font(.headline)
-            if model.isBalanceEnabled, model.processes.count > 1 {
+            if model.processes.count > 1 {
                 Text(String(format: "total %.0f%%", model.balanceTotal * 100))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
@@ -49,32 +54,8 @@ struct MenuBarContentView: View {
         .padding(.vertical, 8)
     }
 
-    private var antiDuckStatus: String {
-        guard model.isAntiDuckEnabled else { return "Restore audio muted by the call" }
-        guard model.isDuckCalibrated else { return "Measuring the call's ducking…" }
-        return String(format: "Compensating %.0f×", model.duckCompensation)
-    }
-
-    private var emptyState: some View {
-        Text("No apps are playing audio.")
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-    }
-
     private var footer: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: $model.isBalanceEnabled) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Balance")
-                    Text("Turning one app up turns the others down")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .toggleStyle(.switch)
-
             // Only shown during a call. Outside one there is no duck to cancel, and a
             // switch that cannot do anything is worse than no switch.
             if model.isCallActive {
@@ -90,6 +71,9 @@ struct MenuBarContentView: View {
             }
 
             HStack {
+                Text("Drag a bar to set volume")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }
                     .buttonStyle(.link)
@@ -99,77 +83,133 @@ struct MenuBarContentView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
+
+    private var antiDuckStatus: String {
+        guard model.isAntiDuckEnabled else { return "Restore audio muted by the call" }
+        guard model.isDuckCalibrated else { return "Measuring the call's ducking…" }
+        return String(format: "Compensating %.0f×", model.duckCompensation)
+    }
 }
 
+/// One app: a single bar you drag to set its volume.
 private struct AppRow: View {
     @ObservedObject var model: AppModel
     let process: AudioProcess
 
+    private var isProtected: Bool { model.isProtected(process.bundleID) }
+    private var isMuted: Bool { model.isMuted(process.bundleID) }
+    private var gain: Float { model.gain(for: process.bundleID) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 8) {
-                icon
-                Text(process.name).lineLimit(1)
-                if process.isPlaying {
-                    Circle()
-                        .fill(Color.accentColor)
-                        .frame(width: 5, height: 5)
-                        .help("Playing audio")
+        VStack(alignment: .leading, spacing: 3) {
+            VolumeBar(
+                level: gain,
+                isMuted: isMuted,
+                isEnabled: !isProtected,
+                isPlaying: process.isPlaying,
+                onChange: { model.setGain($0, for: process.bundleID) }
+            ) {
+                HStack(spacing: 7) {
+                    icon
+                    Text(process.name)
+                        .lineLimit(1)
+                        .foregroundStyle(isProtected ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                    Spacer(minLength: 4)
+                    Text(label)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
                 }
-                Spacer()
-                Text(percentLabel)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+            }
+            .onTapGesture(count: 2) {
+                // Double click silences one app without pushing volume onto the others.
+                guard !isProtected else { return }
+                model.toggleMute(process.bundleID)
             }
 
-            if model.isProtected(process.bundleID) {
-                Text("Call audio — adjusting this makes calls quieter")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 8) {
-                Button {
-                    model.toggleMute(process.bundleID)
-                } label: {
-                    Image(systemName: model.isMuted(process.bundleID) ? "speaker.slash.fill" : "speaker.fill")
-                }
-                .buttonStyle(.borderless)
-                .disabled(model.isProtected(process.bundleID))
-                .help(model.isMuted(process.bundleID) ? "Unmute" : "Mute")
-
-                Slider(
-                    value: Binding(
-                        get: { Double(model.gain(for: process.bundleID)) },
-                        set: { model.setGain(Float($0), for: process.bundleID) }
-                    ),
-                    in: 0...Double(GainStage.maxGain)
-                )
-                .disabled(model.isMuted(process.bundleID) || model.isProtected(process.bundleID))
-            }
-
-            if let failure = model.failure(for: process.bundleID) {
-                Text(failure)
-                    .font(.caption2)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
+            if isProtected {
+                caption("Call audio — adjusting this makes calls quieter")
+            } else if let failure = model.failure(for: process.bundleID) {
+                caption(failure).foregroundStyle(.red)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
     }
 
-    private var percentLabel: String {
-        if model.isMuted(process.bundleID) { return "muted" }
-        return "\(Int((model.gain(for: process.bundleID) * 100).rounded()))%"
+    private func caption(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(2)
+            .padding(.leading, 2)
+    }
+
+    private var label: String {
+        if isProtected { return "—" }
+        if isMuted { return "muted" }
+        return "\(Int((gain * 100).rounded()))%"
     }
 
     @ViewBuilder
     private var icon: some View {
         if let image = NSRunningApplication(processIdentifier: process.pid)?.icon {
-            Image(nsImage: image).resizable().frame(width: 16, height: 16)
+            Image(nsImage: image).resizable().frame(width: 15, height: 15)
         } else {
-            Image(systemName: "app.dashed").frame(width: 16, height: 16)
+            Image(systemName: "app.dashed").font(.system(size: 12)).frame(width: 15, height: 15)
         }
+    }
+}
+
+/// A horizontal bar whose fill is the volume. Dragging anywhere on it sets the level,
+/// including a press without movement, so a single click jumps to that position.
+private struct VolumeBar<Content: View>: View {
+    let level: Float
+    let isMuted: Bool
+    let isEnabled: Bool
+    let isPlaying: Bool
+    let onChange: (Float) -> Void
+    @ViewBuilder let content: Content
+
+    /// Where 100% sits on a bar that runs to 200%.
+    private var unityFraction: CGFloat { CGFloat(1.0 / GainStage.maxGain) }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let fraction = min(max(CGFloat(level / GainStage.maxGain), 0), 1)
+
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 7).fill(.quaternary)
+
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(fillStyle)
+                    .frame(width: max(3, width * fraction))
+
+                // Marks normal volume, so 100% is findable on a bar that goes to 200%.
+                Rectangle()
+                    .fill(.secondary.opacity(0.45))
+                    .frame(width: 1)
+                    .padding(.vertical, 4)
+                    .offset(x: width * unityFraction)
+
+                content.padding(.horizontal, 8)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .gesture(
+                // minimumDistance 0 so a plain click sets the level too.
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard isEnabled, width > 0 else { return }
+                        let position = min(max(value.location.x / width, 0), 1)
+                        onChange(Float(position) * GainStage.maxGain)
+                    }
+            )
+            .opacity(isEnabled ? 1 : 0.55)
+        }
+        .frame(height: 28)
+    }
+
+    private var fillStyle: AnyShapeStyle {
+        if !isEnabled { return AnyShapeStyle(.quaternary) }
+        if isMuted { return AnyShapeStyle(.tertiary) }
+        return AnyShapeStyle(Color.accentColor.opacity(isPlaying ? 0.85 : 0.45))
     }
 }
