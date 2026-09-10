@@ -21,10 +21,27 @@ public final class AppAudioChannel {
     struct IOState {
         var targetGain: Float
         var currentGain: Float
+        /// Diagnostics, written only by the IO thread. Proves audio is actually flowing
+        /// through our path rather than the graph merely having been built.
+        var framesRendered: UInt64
+        var peakLevel: Float
+    }
+
+    /// How the tap is built. Defaults are what the app ships with; the probe varies them
+    /// to isolate Core Audio behaviour.
+    public struct TapOptions {
+        public var muteBehavior: CATapMuteBehavior
+        public var isPrivate: Bool
+        public init(muteBehavior: CATapMuteBehavior = .mutedWhenTapped, isPrivate: Bool = true) {
+            self.muteBehavior = muteBehavior
+            self.isPrivate = isPrivate
+        }
+        public static let `default` = TapOptions()
     }
 
     public let bundleID: String
     private let processObjectID: AudioObjectID
+    private let options: TapOptions
     private let log = Logger(subsystem: "com.audioadjuster", category: "channel")
 
     private var tapID = AudioObjectID(kAudioObjectUnknown)
@@ -37,13 +54,14 @@ public final class AppAudioChannel {
 
     public var isAttached: Bool { tapID != AudioObjectID(kAudioObjectUnknown) }
 
-    public init(bundleID: String, processObjectID: AudioObjectID, gain: Float) {
+    public init(bundleID: String, processObjectID: AudioObjectID, gain: Float, options: TapOptions = .default) {
         self.bundleID = bundleID
         self.processObjectID = processObjectID
+        self.options = options
         self.state = UnsafeMutablePointer<IOState>.allocate(capacity: 1)
         // Start the ramp at the target so attaching does not fade in from silence.
         let clamped = GainStage.clampGain(gain)
-        self.state.initialize(to: IOState(targetGain: clamped, currentGain: clamped))
+        self.state.initialize(to: IOState(targetGain: clamped, currentGain: clamped, framesRendered: 0, peakLevel: 0))
     }
 
     deinit {
@@ -58,6 +76,14 @@ public final class AppAudioChannel {
     }
 
     public var gain: Float { state.pointee.targetGain }
+
+    /// Frames pushed to the output and the loudest sample seen since the last read.
+    /// Reading resets the peak so successive samples show a live level.
+    public func readStatistics() -> (frames: UInt64, peak: Float) {
+        let statistics = (state.pointee.framesRendered, state.pointee.peakLevel)
+        state.pointee.peakLevel = 0
+        return statistics
+    }
 
     // MARK: - Lifecycle
 
@@ -110,9 +136,9 @@ public final class AppAudioChannel {
         description.name = "AudioAdjuster-\(bundleID)"
         description.uuid = UUID()
         // Private: visible only to us, so nothing else can latch onto this app's audio.
-        description.isPrivate = true
+        description.isPrivate = options.isPrivate
         // The app keeps playing normally until our IO proc reads the tap.
-        description.muteBehavior = .mutedWhenTapped
+        description.muteBehavior = options.muteBehavior
 
         var id = AudioObjectID(kAudioObjectUnknown)
         let status = AudioHardwareCreateProcessTap(description, &id)
@@ -121,6 +147,39 @@ public final class AppAudioChannel {
         }
         tapID = id
         tapUUID = description.uuid
+    }
+
+    /// The stream format Core Audio negotiated for the tap. Empty channel counts here mean
+    /// the tap was created but has nothing to deliver.
+    public func tapFormat() -> AudioStreamBasicDescription? {
+        guard tapID != AudioObjectID(kAudioObjectUnknown) else { return nil }
+        return try? CoreAudioProperty.value(
+            tapID,
+            kAudioTapPropertyFormat,
+            default: AudioStreamBasicDescription(),
+            operation: "read tap format"
+        )
+    }
+
+    /// Channel counts the aggregate device exposes, as (input, output).
+    public func aggregateChannelCounts() -> (input: Int, output: Int) {
+        (channelCount(scope: kAudioObjectPropertyScopeInput), channelCount(scope: kAudioObjectPropertyScopeOutput))
+    }
+
+    private func channelCount(scope: AudioObjectPropertyScope) -> Int {
+        guard aggregateID != AudioObjectID(kAudioObjectUnknown) else { return 0 }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration,
+            mScope: scope,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(aggregateID, &address, 0, nil, &size) == noErr, size > 0 else { return 0 }
+        let raw = UnsafeMutableRawPointer.allocate(byteCount: Int(size), alignment: MemoryLayout<AudioBufferList>.alignment)
+        defer { raw.deallocate() }
+        guard AudioObjectGetPropertyData(aggregateID, &address, 0, nil, &size, raw) == noErr else { return 0 }
+        let list = UnsafeMutableAudioBufferListPointer(raw.assumingMemoryBound(to: AudioBufferList.self))
+        return list.reduce(0) { $0 + Int($1.mNumberChannels) }
     }
 
     private func createAggregateDevice(outputDeviceUID: String) throws {
@@ -185,6 +244,8 @@ public final class AppAudioChannel {
         let target = state.pointee.targetGain
         var stage = GainStage(current: state.pointee.currentGain)
         let sampleSize = MemoryLayout<Float>.size
+        var frames: UInt64 = 0
+        var peak = state.pointee.peakLevel
 
         for index in 0..<outputBuffers.count {
             let outputBuffer = outputBuffers[index]
@@ -208,6 +269,12 @@ public final class AppAudioChannel {
             let increment = stage.increment(toward: target, frameCount: count)
             stage.apply(to: destination, frameCount: count, increment: increment)
 
+            for sampleIndex in 0..<count {
+                let magnitude = abs(destination[sampleIndex])
+                if magnitude > peak { peak = magnitude }
+            }
+            frames &+= UInt64(count)
+
             if outputSamples > count {
                 memset(destination + count, 0, (outputSamples - count) * sampleSize)
             }
@@ -215,5 +282,7 @@ public final class AppAudioChannel {
 
         stage.commit(toward: target)
         state.pointee.currentGain = stage.current
+        state.pointee.framesRendered &+= frames
+        state.pointee.peakLevel = peak
     }
 }

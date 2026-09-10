@@ -42,3 +42,18 @@ probe: build
 
 clean:
 	rm -rf .build build
+
+## The probe needs a real bundle identity too: Core Audio taps silently return zeros for a
+## process that has no Info.plist for macOS to attach an audio-capture grant to.
+PROBE_BUNDLE := build/AudioAdjusterProbe.app
+probe-app: build
+	rm -rf $(PROBE_BUNDLE)
+	mkdir -p $(PROBE_BUNDLE)/Contents/MacOS
+	cp .build/$(CONFIG)/AudioAdjusterProbe $(PROBE_BUNDLE)/Contents/MacOS/AudioAdjusterProbe
+	sed -e 's|<string>AudioAdjuster</string>|<string>AudioAdjusterProbe</string>|' \
+	    -e 's|com.audioadjuster.AudioAdjuster|com.audioadjuster.AudioAdjusterProbe|' \
+	    Resources/Info.plist > $(PROBE_BUNDLE)/Contents/Info.plist
+	codesign --force --sign - \
+		--entitlements Resources/AudioAdjuster.entitlements \
+		--options runtime $(PROBE_BUNDLE)
+	@echo "built $(PROBE_BUNDLE)"

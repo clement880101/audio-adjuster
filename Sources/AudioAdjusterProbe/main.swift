@@ -1,3 +1,4 @@
+import AppKit
 import AudioAdjusterKit
 import CoreAudio
 import Foundation
@@ -46,6 +47,179 @@ case "--list":
             process.name as NSString
         ))
     }
+
+case "--raw":
+    // Diagnostic: unfiltered process objects with the raw result of every property read,
+    // so an empty list can be told apart from a permission or filtering problem.
+    do {
+        let ids = try CoreAudioProperty.array(
+            AudioObjectID(kAudioObjectSystemObject),
+            kAudioHardwarePropertyProcessObjectList,
+            of: AudioObjectID.self,
+            operation: "read process object list"
+        )
+        print("process objects: \(ids.count)")
+        for id in ids {
+            let pid = try? CoreAudioProperty.value(id, kAudioProcessPropertyPID, default: pid_t(-1), operation: "pid")
+            var bundle = "<none>"
+            do {
+                bundle = try CoreAudioProperty.string(id, kAudioProcessPropertyBundleID, operation: "bundle")
+            } catch let error as CoreAudioError {
+                bundle = "<err \(error.status)>"
+            }
+            let running: UInt32 = (try? CoreAudioProperty.value(id, kAudioProcessPropertyIsRunning, default: 0, operation: "r")) ?? 9
+            let output: UInt32 = (try? CoreAudioProperty.value(id, kAudioProcessPropertyIsRunningOutput, default: 0, operation: "o")) ?? 9
+            let name = pid.map { NSRunningApplication(processIdentifier: $0)?.localizedName ?? "-" } ?? "-"
+            print("  obj=\(id) pid=\(pid.map(String.init) ?? "?") running=\(running) output=\(output) bundle=\(bundle) name=\(name)")
+        }
+    } catch {
+        print("failed: \(error)")
+        exit(1)
+    }
+
+case "--verify":
+    // End-to-end check of the shipping configuration: a private, mutedWhenTapped tap at a
+    // sweep of gains. If the measured peak tracks the requested gain, the whole path works.
+    guard arguments.count >= 3, let verifyPID = pid_t(arguments[1]) else { usage() }
+    let verifyPath = arguments[2]
+    var verifyReport = "verify: target pid \(verifyPID)\n"
+
+    if let verifyEntry = system.rawProcesses().first(where: { $0.pid == verifyPID }) {
+        for testGain in [Float(1.0), 0.5, 0.25, 0.0, 2.0] {
+            let verifyChannel = AppAudioChannel(
+                bundleID: verifyEntry.bundleID ?? "pid-\(verifyPID)",
+                processObjectID: verifyEntry.objectID,
+                gain: testGain
+            )
+            do {
+                let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
+                try verifyChannel.attach(outputDeviceUID: uid)
+                Thread.sleep(forTimeInterval: 1.5)
+                let statistics = verifyChannel.readStatistics()
+                verifyChannel.detach()
+                verifyReport += String(format: "  gain=%.2f frames=%llu peak=%.4f\n", testGain, statistics.frames, statistics.peak)
+            } catch {
+                verifyReport += "  gain=\(testGain) attach failed: \(error)\n"
+            }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+    } else {
+        verifyReport += "target process not found\n"
+    }
+    try? verifyReport.write(toFile: verifyPath, atomically: true, encoding: .utf8)
+
+case "--tap-diag-file":
+    // Same diagnostic as --tap-diag but writes to a file, so it can be launched through
+    // LaunchServices (`open`) where the app is its own responsible process and macOS can
+    // therefore show the audio-capture prompt.
+    guard arguments.count >= 3, let filePID = pid_t(arguments[1]) else { usage() }
+    let outputPath = arguments[2]
+    var report = "probe pid \(getpid()), target pid \(filePID)\n"
+
+    if let fileEntry = system.rawProcesses().first(where: { $0.pid == filePID }) {
+        let fileChannel = AppAudioChannel(
+            bundleID: fileEntry.bundleID ?? "pid-\(filePID)",
+            processObjectID: fileEntry.objectID,
+            gain: 1.0,
+            options: .init(muteBehavior: .unmuted, isPrivate: true)
+        )
+        do {
+            let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
+            try fileChannel.attach(outputDeviceUID: uid)
+            Thread.sleep(forTimeInterval: 3.0)
+            let statistics = fileChannel.readStatistics()
+            fileChannel.detach()
+            report += String(format: "frames=%llu peak=%.4f\n", statistics.frames, statistics.peak)
+        } catch {
+            report += "attach failed: \(error)\n"
+        }
+    } else {
+        report += "target process not found\n"
+    }
+    try? report.write(toFile: outputPath, atomically: true, encoding: .utf8)
+
+case "--tap-diag":
+    // Tries each tap configuration against one process and reports whether audio arrives.
+    // Uses an unmuted tap for the first variants so the source keeps playing normally.
+    guard arguments.count >= 2, let diagPID = pid_t(arguments[1]) else { usage() }
+    guard let diagEntry = system.rawProcesses().first(where: { $0.pid == diagPID }) else {
+        print("no audio process with pid \(diagPID); is it playing?")
+        exit(1)
+    }
+    print("process object \(diagEntry.objectID) for pid \(diagPID), bundle \(diagEntry.bundleID ?? "<none>")")
+
+    let variants: [(String, AppAudioChannel.TapOptions)] = [
+        ("unmuted + private", .init(muteBehavior: .unmuted, isPrivate: true)),
+        ("unmuted + public", .init(muteBehavior: .unmuted, isPrivate: false)),
+        ("mutedWhenTapped + private", .init(muteBehavior: .mutedWhenTapped, isPrivate: true)),
+    ]
+
+    for (label, options) in variants {
+        let diagChannel = AppAudioChannel(
+            bundleID: diagEntry.bundleID ?? "pid-\(diagPID)",
+            processObjectID: diagEntry.objectID,
+            gain: 1.0,
+            options: options
+        )
+        do {
+            let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
+            try diagChannel.attach(outputDeviceUID: uid)
+        } catch {
+            print("  \(label): attach failed: \(error)")
+            continue
+        }
+        let format = diagChannel.tapFormat()
+        let counts = diagChannel.aggregateChannelCounts()
+        Thread.sleep(forTimeInterval: 1.5)
+        let statistics = diagChannel.readStatistics()
+        diagChannel.detach()
+        let formatText = format.map {
+            "\(Int($0.mSampleRate))Hz ch=\($0.mChannelsPerFrame) bits=\($0.mBitsPerChannel) fmt=\($0.mFormatID)"
+        } ?? "<none>"
+        print(String(
+            format: "  %-28@ tap[%@] agg[in=%d out=%d] frames=%llu peak=%.4f",
+            label as NSString, formatText as NSString, counts.input, counts.output,
+            statistics.frames, statistics.peak
+        ))
+    }
+
+case "--gain-pid":
+    // Attaches by PID instead of bundle ID, so the audio path can be verified against a
+    // process we started ourselves rather than one of the user's apps.
+    guard arguments.count >= 3, let targetPID = pid_t(arguments[1]), let gain = Float(arguments[2]) else { usage() }
+    let duration = arguments.count > 3 ? (Double(arguments[3]) ?? 6) : 6
+
+    guard let entry = system.rawProcesses().first(where: { $0.pid == targetPID }) else {
+        print("no audio process with pid \(targetPID); is it playing?")
+        exit(1)
+    }
+
+    let pidChannel = AppAudioChannel(
+        bundleID: entry.bundleID ?? "pid-\(targetPID)",
+        processObjectID: entry.objectID,
+        gain: gain
+    )
+
+    do {
+        let uid = try CoreAudioSystem.deviceUID(CoreAudioSystem.defaultOutputDeviceID())
+        try pidChannel.attach(outputDeviceUID: uid)
+        print("attached to pid \(targetPID) (object \(entry.objectID)) at gain \(gain), output \(uid)")
+    } catch {
+        print("attach failed: \(error)")
+        exit(1)
+    }
+
+    // Sample the render statistics so we can see whether audio genuinely flows through
+    // our IO proc, rather than only that the graph was built.
+    var elapsed = 0.0
+    while elapsed < duration {
+        Thread.sleep(forTimeInterval: 0.5)
+        elapsed += 0.5
+        let statistics = pidChannel.readStatistics()
+        print(String(format: "  t=%.1fs frames=%llu peak=%.4f", elapsed, statistics.frames, statistics.peak))
+    }
+    pidChannel.detach()
+    print("detached; pid \(targetPID) restored")
 
 case "--gain":
     guard arguments.count >= 3, let gain = Float(arguments[2]) else { usage() }

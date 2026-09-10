@@ -68,7 +68,28 @@ Verifying the audio path without the UI:
 
 `--gain` restores the app on exit, including on Ctrl-C.
 
+## A gotcha that costs hours
+
+**A process tap returns digital silence, with no error, unless the calling process has the
+`kTCCServiceAudioCapture` grant.** Everything still appears to work: the tap is created,
+the aggregate device reports the right format and channel counts, and the IO proc runs and
+delivers buffers of the correct size. They are simply full of zeros.
+
+macOS can only attach that grant to a process with a bundle identity, and it only prompts
+when the app is its own responsible process. A bare SwiftPM executable run from a shell can
+never be granted it, and a bundled app run as `Foo.app/Contents/MacOS/Foo` from a terminal
+is attributed to the terminal instead. Launch it through LaunchServices:
+
+```
+open -a build/AudioAdjuster.app
+```
+
+Verified with the tap muted and the gain swept: measured output peak tracks requested gain
+linearly (1.00 -> 0.0275, 0.50 -> 0.0142, 0.25 -> 0.0069, 0.00 -> 0.0000, 2.00 -> 0.0549
+for a source whose unattenuated peak is 0.0275).
+
 ## Status
 
-Built and unit tested; **not yet verified against live audio**. See the design document
-for the open question of whether the aggregate device also sidesteps system ducking.
+Per-app volume is verified working against live audio. Anti-duck is implemented as a gain
+preset but **its premise is still untested** — whether routing through our aggregate device
+also sidesteps the system's call ducking needs checking on a real call.

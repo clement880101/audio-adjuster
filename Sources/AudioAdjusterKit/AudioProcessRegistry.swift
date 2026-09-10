@@ -41,17 +41,27 @@ public final class AudioProcessRegistry {
         var byBundleID: [String: AudioProcess] = [:]
 
         for entry in raw {
-            // Without a bundle ID there is nothing stable to key a setting to.
+            // Without a bundle ID there is nothing stable to key a setting to. This also
+            // excludes command-line audio tools, which have no bundle identifier.
             guard let bundleID = entry.bundleID, !bundleID.isEmpty else { continue }
             // Tapping ourselves would feed our own output back into our input.
             guard entry.pid != ownPID else { continue }
-            guard entry.isRunning || entry.isRunningOutput else { continue }
+
+            // Core Audio lists roughly thirty processes, most of them system daemons
+            // (audiomxd, assistantd, callservicesd) that hold an audio client without ever
+            // being something a person wants a volume slider for. Having a running
+            // application entry is what separates a real app from a daemon.
+            //
+            // `isRunning` here means "has an active audio client", not "is open", so it is
+            // 0 for an idle Music or Firefox and cannot be used to decide this.
+            let name = names.displayName(pid: entry.pid, bundleID: bundleID)
+            guard entry.isRunningOutput || name != nil else { continue }
 
             let process = AudioProcess(
                 objectID: entry.objectID,
                 pid: entry.pid,
                 bundleID: bundleID,
-                name: names.displayName(pid: entry.pid, bundleID: bundleID) ?? bundleID,
+                name: name ?? bundleID,
                 isPlaying: entry.isRunningOutput
             )
 

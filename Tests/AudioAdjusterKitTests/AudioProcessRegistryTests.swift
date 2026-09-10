@@ -50,25 +50,41 @@ struct AudioProcessRegistryTests {
         #expect(result.map(\.bundleID) == ["other"])
     }
 
-    @Test("processes that are neither running nor outputting are dropped")
-    func dropsIdleProcesses() {
+    @Test("a silent system daemon is hidden")
+    func hidesIdleDaemons() {
+        // No running-application entry, so this is a daemon like audiomxd rather than an
+        // app the user would want a slider for.
         let result = AudioProcessRegistry.assemble(
-            raw: [raw(1, bundleID: "gone", isRunning: false, isRunningOutput: false)],
+            raw: [raw(1, bundleID: "com.apple.audiomxd", isRunning: true, isRunningOutput: false)],
             excludingPID: 0,
             names: FakeNames()
         )
         #expect(result.isEmpty)
     }
 
-    @Test("a running app that is silent is still listed, marked not playing")
-    func silentButRunningIsListed() {
+    @Test("a daemon that is actually playing is listed anyway")
+    func showsPlayingDaemons() {
         let result = AudioProcessRegistry.assemble(
-            raw: [raw(1, bundleID: "quiet", isRunning: true, isRunningOutput: false)],
+            raw: [raw(1, bundleID: "com.apple.somedaemon", isRunning: true, isRunningOutput: true)],
             excludingPID: 0,
             names: FakeNames()
         )
         #expect(result.count == 1)
+        #expect(result[0].isPlaying)
+    }
+
+    @Test("an open app is listed while silent, marked not playing")
+    func silentAppIsListed() {
+        // isRunning is 0 for an idle Music, so the running-application entry is what
+        // keeps it in the list.
+        let result = AudioProcessRegistry.assemble(
+            raw: [raw(1, bundleID: "com.apple.Music", isRunning: false, isRunningOutput: false)],
+            excludingPID: 0,
+            names: FakeNames(["com.apple.Music": "Music"])
+        )
+        #expect(result.count == 1)
         #expect(result[0].isPlaying == false)
+        #expect(result[0].name == "Music")
     }
 
     @Test("duplicate bundle IDs collapse, preferring the instance making sound")
