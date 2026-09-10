@@ -47,21 +47,26 @@ public final class AudioProcessRegistry {
             // Tapping ourselves would feed our own output back into our input.
             guard entry.pid != ownPID else { continue }
 
-            // Core Audio lists roughly thirty processes, most of them system daemons
-            // (audiomxd, assistantd, callservicesd) that hold an audio client without ever
-            // being something a person wants a volume slider for. Having a running
-            // application entry is what separates a real app from a daemon.
+            // Core Audio lists around thirty processes and most are system daemons that
+            // hold an audio client without ever being something a person wants a volume
+            // slider for — loginwindow, universalaccessd, PowerChime, SiriNCService. Many
+            // of those do have a running-application entry, so merely having one is not
+            // enough to tell them apart from real apps.
+            //
+            // Activation policy is: an ordinary app has a Dock icon, an agent or daemon
+            // does not. Anything actually producing sound is shown regardless, since the
+            // user can hear it and will want to control it whatever it is.
             //
             // `isRunning` here means "has an active audio client", not "is open", so it is
             // 0 for an idle Music or Firefox and cannot be used to decide this.
-            let name = names.displayName(pid: entry.pid, bundleID: bundleID)
-            guard entry.isRunningOutput || name != nil else { continue }
+            let resolved = names.resolve(pid: entry.pid, bundleID: bundleID)
+            guard entry.isRunningOutput || resolved?.isRegularApp == true else { continue }
 
             let process = AudioProcess(
                 objectID: entry.objectID,
                 pid: entry.pid,
                 bundleID: bundleID,
-                name: name ?? bundleID,
+                name: resolved?.name ?? bundleID,
                 isPlaying: entry.isRunningOutput
             )
 

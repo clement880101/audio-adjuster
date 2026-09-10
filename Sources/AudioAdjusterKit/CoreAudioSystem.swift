@@ -135,7 +135,9 @@ public final class CoreAudioSystem: AudioProcessSource {
 /// Resolves display names from the running-application list.
 public final class RunningAppNameResolver: AppNameResolver {
     public init() {}
-    public func displayName(pid: pid_t, bundleID: String) -> String? {
-        NSRunningApplication(processIdentifier: pid)?.localizedName
+    public func resolve(pid: pid_t, bundleID: String) -> ResolvedApp? {
+        guard let application = NSRunningApplication(processIdentifier: pid),
+              let name = application.localizedName else { return nil }
+        return ResolvedApp(name: name, isRegularApp: application.activationPolicy == .regular)
     }
 }

@@ -166,6 +166,7 @@ final class AppModel: ObservableObject {
 
     /// Refreshes immediately, for when the popover opens.
     func refreshNow() {
+        DebugLog.write("VIEW popover opened")
         refresh()
     }
 
@@ -178,6 +179,11 @@ final class AppModel: ObservableObject {
     }
 
     private func apply(processes: [AudioProcess]) {
+        if processes != self.processes {
+            DebugLog.write("MODEL list changed -> " + processes.map {
+                "\($0.name)\($0.isPlaying ? "*" : "")"
+            }.joined(separator: ", "))
+        }
         self.processes = processes
         coordinator.reconcile(processes: processes)
     }

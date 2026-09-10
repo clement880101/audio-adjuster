@@ -6,7 +6,10 @@ struct MenuBarContentView: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        DebugLog.write("VIEW body rebuilt with " + model.processes.map {
+            "\($0.name)\($0.isPlaying ? "*" : "")"
+        }.joined(separator: ", "))
+        return VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
 

@@ -13,8 +13,17 @@ private final class FakeSource: AudioProcessSource {
 /// does for processes that are not running applications.
 private final class FakeNames: AppNameResolver {
     var table: [String: String]
-    init(_ table: [String: String] = [:]) { self.table = table }
-    func displayName(pid: pid_t, bundleID: String) -> String? { table[bundleID] }
+    /// Bundle IDs that are ordinary apps rather than background agents. By default every
+    /// named entry is a regular app; `agents` marks the exceptions.
+    var agents: Set<String>
+    init(_ table: [String: String] = [:], agents: Set<String> = []) {
+        self.table = table
+        self.agents = agents
+    }
+    func resolve(pid: pid_t, bundleID: String) -> ResolvedApp? {
+        guard let name = table[bundleID] else { return nil }
+        return ResolvedApp(name: name, isRegularApp: !agents.contains(bundleID))
+    }
 }
 
 private func raw(
@@ -50,16 +59,45 @@ struct AudioProcessRegistryTests {
         #expect(result.map(\.bundleID) == ["other"])
     }
 
-    @Test("a silent system daemon is hidden")
+    @Test("a silent system daemon with no running-application entry is hidden")
     func hidesIdleDaemons() {
-        // No running-application entry, so this is a daemon like audiomxd rather than an
-        // app the user would want a slider for.
         let result = AudioProcessRegistry.assemble(
             raw: [raw(1, bundleID: "com.apple.audiomxd", isRunning: true, isRunningOutput: false)],
             excludingPID: 0,
             names: FakeNames()
         )
         #expect(result.isEmpty)
+    }
+
+    @Test("a silent background agent is hidden even though macOS names it")
+    func hidesNamedAgents() {
+        // loginwindow, PowerChime and SiriNCService all resolve to a name, so a name alone
+        // cannot distinguish them from real apps. Having a Dock icon can.
+        let names = FakeNames(
+            ["com.apple.loginwindow": "loginwindow", "com.apple.Music": "Music"],
+            agents: ["com.apple.loginwindow"]
+        )
+        let result = AudioProcessRegistry.assemble(
+            raw: [
+                raw(1, pid: 1, bundleID: "com.apple.loginwindow", isRunningOutput: false),
+                raw(2, pid: 2, bundleID: "com.apple.Music", isRunningOutput: false),
+            ],
+            excludingPID: 0,
+            names: names
+        )
+        #expect(result.map(\.name) == ["Music"])
+    }
+
+    @Test("an agent that is actually making sound is still shown")
+    func showsAudibleAgents() {
+        // If the user can hear it, they should be able to turn it down, whatever it is.
+        let names = FakeNames(["com.apple.PowerChime": "PowerChime"], agents: ["com.apple.PowerChime"])
+        let result = AudioProcessRegistry.assemble(
+            raw: [raw(1, bundleID: "com.apple.PowerChime", isRunningOutput: true)],
+            excludingPID: 0,
+            names: names
+        )
+        #expect(result.map(\.name) == ["PowerChime"])
     }
 
     @Test("a daemon that is actually playing is listed anyway")
@@ -75,8 +113,7 @@ struct AudioProcessRegistryTests {
 
     @Test("an open app is listed while silent, marked not playing")
     func silentAppIsListed() {
-        // isRunning is 0 for an idle Music, so the running-application entry is what
-        // keeps it in the list.
+        // isRunning is 0 for an idle Music, so being a regular app is what keeps it listed.
         let result = AudioProcessRegistry.assemble(
             raw: [raw(1, bundleID: "com.apple.Music", isRunning: false, isRunningOutput: false)],
             excludingPID: 0,
