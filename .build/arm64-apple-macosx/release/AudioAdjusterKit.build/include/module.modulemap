@@ -1,3 +1,0 @@
-module AudioAdjusterKit {
-    header "/Users/clementchang/audio-adjuster/.build/arm64-apple-macosx/release/AudioAdjusterKit.build/include/AudioAdjusterKit-Swift.h"
-}
