@@ -16,12 +16,16 @@ public final class ChannelCoordinator {
 
     private let settings: SettingsStore
     private var channels: [String: AppAudioChannel] = [:]
+    private var audits: [String: SilenceAudit] = [:]
     private var processes: [AudioProcess] = []
     private let log = Logger(subsystem: "com.audioadjuster", category: "coordinator")
 
     /// Reports a channel that could not be attached, so the UI can show the app as
     /// uncontrolled rather than silently lying about it.
     public var onError: ((String, Error) -> Void)?
+
+    /// Reports a channel released because its tap delivered only silence.
+    public var onSilenceDetected: ((String) -> Void)?
 
     /// Overridable so tests and the probe can supply a device UID without hardware.
     public var outputDeviceUID: () throws -> String = {
@@ -83,6 +87,7 @@ public final class ChannelCoordinator {
 
         for bundleID in plan.detach {
             channels.removeValue(forKey: bundleID)?.detach()
+            audits.removeValue(forKey: bundleID)
         }
         for (bundleID, gain) in plan.update {
             channels[bundleID]?.setGain(gain)
@@ -112,6 +117,28 @@ public final class ChannelCoordinator {
     public func detachAll() {
         for (_, channel) in channels { channel.detach() }
         channels.removeAll()
+        audits.removeAll()
+    }
+
+    /// Releases any channel whose tap is delivering silence while its app is playing.
+    ///
+    /// Without the audio-capture permission a tap succeeds but yields zeros, and because
+    /// the tap also mutes the app, the app would simply go quiet. Releasing the channel
+    /// restores it. Call this on a regular tick.
+    public func auditForSilentTaps(processes: [AudioProcess]) {
+        for (bundleID, channel) in channels {
+            let isPlaying = processes.first { $0.bundleID == bundleID }?.isPlaying ?? false
+            let statistics = channel.readStatistics()
+            var audit = audits[bundleID] ?? SilenceAudit()
+            let hasFailed = audit.record(frames: statistics.frames, peak: statistics.peak, isPlaying: isPlaying)
+            audits[bundleID] = audit
+
+            guard hasFailed else { continue }
+            log.error("releasing \(bundleID, privacy: .public): tap delivered only silence")
+            channels.removeValue(forKey: bundleID)?.detach()
+            audits.removeValue(forKey: bundleID)
+            onSilenceDetected?(bundleID)
+        }
     }
 
     private func attach(bundleID: String) {
@@ -125,6 +152,7 @@ public final class ChannelCoordinator {
             let uid = try outputDeviceUID()
             try channel.attach(outputDeviceUID: uid)
             channels[bundleID] = channel
+            audits[bundleID] = SilenceAudit()
         } catch {
             log.error("could not control \(bundleID, privacy: .public): \(error.localizedDescription, privacy: .public)")
             onError?(bundleID, error)

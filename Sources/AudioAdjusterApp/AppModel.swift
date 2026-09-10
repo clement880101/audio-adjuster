@@ -39,6 +39,14 @@ final class AppModel: ObservableObject {
         coordinator.onError = { [weak self] bundleID, error in
             Task { @MainActor in self?.failures[bundleID] = "\(error)" }
         }
+        coordinator.onSilenceDetected = { [weak self] bundleID in
+            Task { @MainActor in
+                // The app has been restored to normal volume; say why rather than letting
+                // the slider look like it worked.
+                self?.failures[bundleID] = "No audio captured — allow Audio Adjuster under "
+                    + "Privacy & Security › Screen & System Audio Recording, then try again."
+            }
+        }
         registry.onChange = { [weak self] processes in
             Task { @MainActor in self?.apply(processes: processes) }
         }
@@ -100,6 +108,9 @@ final class AppModel: ObservableObject {
     private func refresh() {
         registry.refresh()
         apply(processes: registry.processes)
+        // Catches a tap that was granted but yields silence, which would otherwise leave
+        // the app muted with no indication why.
+        coordinator.auditForSilentTaps(processes: registry.processes)
     }
 
     private func apply(processes: [AudioProcess]) {
