@@ -137,6 +137,22 @@ struct AudioProcessRegistryTests {
         #expect(result.map(\.name) == ["Apple", "mango", "zebra"])
     }
 
+    @Test("apps making sound are listed before idle ones")
+    func playingAppsComeFirst() {
+        // The list runs to a dozen or more entries; burying the audible one alphabetically
+        // makes changes invisible.
+        let names = FakeNames(["a": "Apple", "z": "Zebra"])
+        let result = AudioProcessRegistry.assemble(
+            raw: [
+                raw(1, pid: 1, bundleID: "a", isRunningOutput: false),
+                raw(2, pid: 2, bundleID: "z", isRunningOutput: true),
+            ],
+            excludingPID: 0,
+            names: names
+        )
+        #expect(result.map(\.name) == ["Zebra", "Apple"])
+    }
+
     @Test("refresh notifies only when the list actually changes")
     func changeNotification() {
         let source = FakeSource([raw(1, bundleID: "a")])

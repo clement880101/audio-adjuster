@@ -73,7 +73,10 @@ public final class AudioProcessRegistry {
             byBundleID[bundleID] = process
         }
 
+        // Apps actually making sound come first. The list runs to a dozen or more entries,
+        // and the ones worth adjusting are the ones you can hear.
         return byBundleID.values.sorted {
+            if $0.isPlaying != $1.isPlaying { return $0.isPlaying }
             let byName = $0.name.localizedCaseInsensitiveCompare($1.name)
             if byName != .orderedSame { return byName == .orderedAscending }
             return $0.bundleID < $1.bundleID

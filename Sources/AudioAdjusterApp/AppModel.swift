@@ -3,6 +3,7 @@ import AudioAdjusterKit
 import Combine
 import CoreAudio
 import Foundation
+import os
 
 /// Bridges the audio engine to SwiftUI: owns the registry, the settings and the channel
 /// coordinator, and republishes their state for the menu bar view.
@@ -22,6 +23,10 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Shared so the app delegate can start and stop it without depending on a view
+    /// having appeared first.
+    static let shared = AppModel()
+
     private let settings: SettingsStore
     private let system = CoreAudioSystem()
     private let coordinator: ChannelCoordinator
@@ -29,6 +34,9 @@ final class AppModel: ObservableObject {
 
     private var refreshTimer: Timer?
     private var duckTimer: Timer?
+    private var hasStarted = false
+    private let log = Logger(subsystem: "com.audioadjuster", category: "model")
+
 
     /// Live anti-duck state, for the menu bar.
     @Published private(set) var duckCompensation: Float = 1
@@ -60,23 +68,22 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
+        guard !hasStarted else { return }
+        hasStarted = true
         refresh()
-        // `isRunningOutput` has no change notification of its own, so the playing state is
-        // polled. The interval is loose because it only drives list ordering and labels.
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
-        }
+        // `isRunningOutput` has no change notification of its own, so whether an app is
+        // currently making sound has to be polled.
+        refreshTimer = schedule(every: 1.0) { [weak self] in self?.refresh() }
         // Anti-duck compensation can reach 30x, so the window between a call ending and
         // us noticing has to be short. This tick is cheap: property reads and arithmetic.
-        duckTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.duckTick() }
-        }
+        duckTimer = schedule(every: 0.2) { [weak self] in self?.duckTick() }
         observeProcessList()
         observeDefaultOutputDevice()
     }
 
     /// Restores every app before the process exits.
     func shutDown() {
+        hasStarted = false
         refreshTimer?.invalidate()
         refreshTimer = nil
         duckTimer?.invalidate()
@@ -143,6 +150,24 @@ final class AppModel: ObservableObject {
     var hasAdjustments: Bool { !settings.adjustedBundleIDs.isEmpty || isAntiDuckEnabled }
 
     // MARK: - Refresh and observation
+
+    /// Schedules a repeating timer in `.common` modes.
+    ///
+    /// `Timer.scheduledTimer` installs into the default run loop mode only, and AppKit
+    /// switches to event tracking while a menu bar popover is open — so a default-mode
+    /// timer stops firing exactly when the user is looking at the list.
+    private func schedule(every interval: TimeInterval, _ body: @escaping () -> Void) -> Timer {
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in
+            Task { @MainActor in body() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        return timer
+    }
+
+    /// Refreshes immediately, for when the popover opens.
+    func refreshNow() {
+        refresh()
+    }
 
     private func refresh() {
         registry.refresh()
