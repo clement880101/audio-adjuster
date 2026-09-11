@@ -19,23 +19,37 @@ struct MenuBarContentView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-            } else {
+            } else if model.processes.count > Self.rowsBeforeScrolling {
+                // Only past this many apps is a scroller worth the loss of a window that
+                // fits its contents. A fixed height here, not a cap: a ScrollView has no
+                // intrinsic height, so a window sizing itself to content would collapse it.
                 ScrollView {
-                    VStack(spacing: 6) {
-                        ForEach(model.processes) { process in
-                            AppRow(model: model, process: process)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    rows
                 }
-                .frame(minHeight: 60, maxHeight: 360)
+                .frame(height: Self.scrollingHeight)
+            } else {
+                // The window grows to fit however many apps there are.
+                rows
             }
 
             Divider()
             footer
         }
         .frame(width: 320)
+    }
+
+    /// Above this many apps the list scrolls instead of growing.
+    private static let rowsBeforeScrolling = 12
+    private static let scrollingHeight: CGFloat = 460
+
+    private var rows: some View {
+        VStack(spacing: 6) {
+            ForEach(model.processes) { process in
+                AppRow(model: model, process: process)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 
     private var header: some View {
