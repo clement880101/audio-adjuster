@@ -113,7 +113,7 @@ private struct AppRow: View {
     @ObservedObject var model: AppModel
     let process: AudioProcess
 
-    private var isProtected: Bool { model.isProtected(process.bundleID) }
+    private var isCallEngine: Bool { model.isCallEngine(process.bundleID) }
     private var isMuted: Bool { model.isMuted(process.bundleID) }
     private var gain: Float { model.gain(for: process.bundleID) }
 
@@ -122,7 +122,7 @@ private struct AppRow: View {
             VolumeBar(
                 level: gain,
                 isMuted: isMuted,
-                isEnabled: !isProtected,
+                isEnabled: true,
                 isPlaying: process.isPlaying,
                 onChange: { model.setGain($0, for: process.bundleID) }
             ) {
@@ -130,7 +130,7 @@ private struct AppRow: View {
                     icon
                     Text(process.name)
                         .lineLimit(1)
-                        .foregroundStyle(isProtected ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                        .foregroundStyle(AnyShapeStyle(.primary))
                     Spacer(minLength: 4)
                     Text(label)
                         .font(.caption.monospacedDigit())
@@ -139,13 +139,10 @@ private struct AppRow: View {
             }
             .onTapGesture(count: 2) {
                 // Double click silences one app without pushing volume onto the others.
-                guard !isProtected else { return }
                 model.toggleMute(process.bundleID)
             }
 
-            if isProtected {
-                caption("Call audio — adjusting this makes calls quieter")
-            } else if let failure = model.failure(for: process.bundleID) {
+            if let failure = model.failure(for: process.bundleID) {
                 caption(failure).foregroundStyle(.red)
             }
         }
@@ -160,7 +157,6 @@ private struct AppRow: View {
     }
 
     private var label: String {
-        if isProtected { return "—" }
         if isMuted { return "muted" }
         return "\(Int((gain * 100).rounded()))%"
     }

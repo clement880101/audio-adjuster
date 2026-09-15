@@ -23,7 +23,11 @@ public struct DuckServo: Equatable {
 
     /// Fraction of the remaining distance travelled per update when increasing.
     /// Decreases are applied immediately and ignore this.
-    public static let riseRate: Float = 0.4
+    ///
+    /// At the 200ms tick this reaches ~94% of target in about 600ms, which keeps the dip
+    /// short when a call channel first attaches. Rising gradually still matters: every
+    /// intermediate value under-compensates, which is quiet rather than loud.
+    public static let riseRate: Float = 0.6
 
     /// Current compensation multiplier. 1 means no compensation.
     public private(set) var compensation: Float = 1

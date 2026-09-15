@@ -82,7 +82,7 @@ struct ChannelCoordinatorPlanTests {
         #expect(plan.attach == [music])
     }
 
-    @Test("anti-duck attaches other apps but never the call app")
+    @Test("anti-duck attaches other apps but not the call app")
     func antiDuckAttachesEverythingButTheCall() {
         let store = makeStore()
         store.isAntiDuckEnabled = true
@@ -106,13 +106,13 @@ struct ChannelCoordinatorPlanTests {
         #expect(plan.update.isEmpty)
     }
 
-    @Test("an existing channel on a call app is released")
-    func releasesProtectedApp() {
+    @Test("an adjusted call app keeps its channel")
+    func callAppKeepsChannel() {
         let store = makeStore()
-        // Settings written before the app was protected must not keep a tap alive.
-        store.setGain(2.0, for: faceTime)
+        store.setGain(1.5, for: faceTime)
         let plan = ChannelCoordinator.plan(processes: [process(faceTime)], existing: [faceTime], settings: store)
-        #expect(plan.detach == [faceTime])
+        #expect(plan.detach.isEmpty)
+        #expect(plan.update == [faceTime: 1.5])
     }
 
     @Test("anti-duck leaves an app the user muted at silence")

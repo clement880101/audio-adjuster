@@ -93,7 +93,7 @@ final class AppModel: ObservableObject {
 
     private func duckTick() {
         coordinator.tick(processes: processes)
-        let active = processes.contains { settings.isProtected($0.bundleID) && $0.isPlaying }
+        let active = processes.contains { settings.isCallEngine($0.bundleID) && $0.isPlaying }
         if active != isCallActive { isCallActive = active }
         if coordinator.duckCompensation != duckCompensation { duckCompensation = coordinator.duckCompensation }
         if coordinator.isDuckCalibrated != isDuckCalibrated { isDuckCalibrated = coordinator.isDuckCalibrated }
@@ -103,8 +103,8 @@ final class AppModel: ObservableObject {
 
     func gain(for bundleID: String) -> Float { settings.setting(for: bundleID).gain }
     func isMuted(_ bundleID: String) -> Bool { settings.setting(for: bundleID).isMuted }
-    /// Apps we refuse to tap because doing so degrades call audio.
-    func isProtected(_ bundleID: String) -> Bool { settings.isProtected(bundleID) }
+    /// True for processes carrying call audio. Adjustable, but always duck-compensated.
+    func isCallEngine(_ bundleID: String) -> Bool { settings.isCallEngine(bundleID) }
     func isControlled(_ bundleID: String) -> Bool { coordinator.controlledBundleIDs.contains(bundleID) }
     func failure(for bundleID: String) -> String? { failures[bundleID] }
 
@@ -112,7 +112,7 @@ final class AppModel: ObservableObject {
         // Sliders are linked: the volume one app gains, the others give up. Call engines
         // are excluded because they can never be tapped, so they cannot give or take.
         // Mute is deliberately not balanced - it is the way to silence one app alone.
-        let participants = processes.map(\.bundleID).filter { !settings.isProtected($0) }
+        let participants = processes.map(\.bundleID)
         var current: [String: Float] = [:]
         for id in participants { current[id] = settings.setting(for: id).gain }
         settings.setGains(Balance.apply(gains: current, changed: bundleID, newGain: gain))
@@ -126,7 +126,6 @@ final class AppModel: ObservableObject {
     var balanceTotal: Float {
         processes
             .map(\.bundleID)
-            .filter { !settings.isProtected($0) }
             .reduce(0) { $0 + settings.setting(for: $1).gain }
     }
 

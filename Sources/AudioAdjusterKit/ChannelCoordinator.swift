@@ -115,6 +115,12 @@ public final class ChannelCoordinator {
         for bundleID in plan.attach {
             attach(bundleID: bundleID)
         }
+
+        // A newly attached call channel starts uncompensated and would be audibly quiet
+        // until the next tick. Measure straight away instead of waiting for it.
+        if !plan.attach.isEmpty {
+            updateDuckCompensation(processes: processes)
+        }
     }
 
     /// Re-applies the plan against the process list we already have. Used when settings
@@ -191,10 +197,11 @@ public final class ChannelCoordinator {
     private var renderedPeaks: [String: Float] = [:]
 
     private func updateDuckCompensation(processes: [AudioProcess]) {
-        // A call engine actually producing audio is the only condition under which there
-        // is a duck to cancel.
-        let isCallActive = settings.isAntiDuckEnabled && processes.contains {
-            settings.isProtected($0.bundleID) && $0.isPlaying
+        // A call engine actually producing audio is the only condition under which the
+        // system ducks anything. Measured regardless of the anti-duck toggle, because a
+        // tapped call app needs compensation just to sound unchanged.
+        let isCallActive = processes.contains {
+            settings.isCallEngine($0.bundleID) && $0.isPlaying
         }
 
         guard isCallActive else {
@@ -229,9 +236,20 @@ public final class ChannelCoordinator {
         }
     }
 
+    /// Decides each channel's compensation.
+    ///
+    /// A tapped call engine is always compensated: tapping it costs it the exemption from
+    /// ducking it would otherwise have, so without this its slider makes the call quieter
+    /// instead of louder. Everything else is compensated only when the user has asked for
+    /// anti-duck, since those apps sound the same tapped or not until they do.
+    private func compensation(for bundleID: String) -> Float {
+        if settings.isCallEngine(bundleID) { return servo.compensation }
+        return settings.isAntiDuckEnabled ? servo.compensation : 1
+    }
+
     private func applyCompensation() {
         for (bundleID, channel) in channels {
-            channel.setCompensation(settings.isProtected(bundleID) ? 1 : servo.compensation)
+            channel.setCompensation(compensation(for: bundleID))
         }
     }
 
@@ -253,7 +271,7 @@ public final class ChannelCoordinator {
         do {
             let uid = try outputDeviceUID()
             try channel.attach(outputDeviceUID: uid)
-            channel.setCompensation(settings.isProtected(bundleID) ? 1 : servo.compensation)
+            channel.setCompensation(compensation(for: bundleID))
             channels[bundleID] = channel
             audits[bundleID] = SilenceAudit()
             sawAudio[bundleID] = false

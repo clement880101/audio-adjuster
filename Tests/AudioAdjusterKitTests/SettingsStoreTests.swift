@@ -66,41 +66,43 @@ struct SettingsStoreTests {
         #expect(store.setting(for: music) == .unchanged)
     }
 
-    @Test("anti-duck boosts other apps")
-    func antiDuckApplies() {
+    @Test("anti-duck needs a channel on every other app, to compensate them")
+    func antiDuckNeedsChannels() {
         let (store, _) = makeStore()
+        #expect(store.requiresChannel(for: music) == false)
         store.isAntiDuckEnabled = true
-        #expect(store.effectiveGain(for: music) == GainStage.clampGain(AntiDuckPreset.default.othersBoost))
+        #expect(store.requiresChannel(for: music))
     }
 
-    @Test("the call app is never tapped, whatever the settings say")
-    func callAppIsProtected() {
+    @Test("the call app is adjustable like anything else")
+    func callAppIsAdjustable() {
         let (store, _) = makeStore()
-        #expect(store.isProtected("com.apple.avconferenced"))
-        #expect(store.isProtected(faceTime))
-        // Tapping the call engine strips its exemption from ducking and makes the call
-        // quieter, so no setting may cause a channel for it.
-        store.setGain(2.0, for: "com.apple.avconferenced")
-        #expect(store.effectiveGain(for: "com.apple.avconferenced") == 1.0)
-        #expect(store.requiresChannel(for: "com.apple.avconferenced") == false)
-        store.setMuted(true, for: faceTime)
-        #expect(store.requiresChannel(for: faceTime) == false)
+        #expect(store.isCallEngine("com.apple.avconferenced"))
+        #expect(store.isCallEngine(faceTime))
+        // Its channel is always duck-compensated, which is what makes the slider behave;
+        // the gain itself is ordinary.
+        store.setGain(1.5, for: "com.apple.avconferenced")
+        #expect(store.effectiveGain(for: "com.apple.avconferenced") == 1.5)
+        #expect(store.requiresChannel(for: "com.apple.avconferenced"))
     }
 
-    @Test("anti-duck does not create a channel for the call app")
+    @Test("anti-duck does not tap the call app, which is not ducked")
     func antiDuckSkipsCallApp() {
         let (store, _) = makeStore()
         store.isAntiDuckEnabled = true
+        // The call is the thing causing the duck, not a victim of it.
         #expect(store.requiresChannel(for: "com.apple.avconferenced") == false)
         #expect(store.requiresChannel(for: music))
     }
 
-    @Test("anti-duck multiplies the user's own gain rather than replacing it")
-    func antiDuckComposesWithUserGain() {
+    @Test("anti-duck leaves the user's own gain alone")
+    func antiDuckLeavesGainAlone() {
         let (store, _) = makeStore()
         store.setGain(0.5, for: music)
         store.isAntiDuckEnabled = true
-        #expect(abs(store.effectiveGain(for: music) - 0.5 * AntiDuckPreset.default.othersBoost) < 1e-6)
+        // Compensation is applied by the channel, not folded into the user's number, so
+        // the slider keeps meaning what it says.
+        #expect(store.effectiveGain(for: music) == 0.5)
     }
 
     @Test("anti-duck never unmutes a muted app")
@@ -119,8 +121,8 @@ struct SettingsStoreTests {
         #expect(store.requiresChannel(for: music))
     }
 
-    @Test("anti-duck result stays within the supported gain range")
-    func antiDuckClamped() {
+    @Test("gain stays within the supported range")
+    func gainStaysClamped() {
         let (store, _) = makeStore()
         store.setGain(GainStage.maxGain, for: music)
         store.isAntiDuckEnabled = true
@@ -134,13 +136,13 @@ struct SettingsStoreTests {
         first.setGain(0.3, for: music)
         first.setMuted(true, for: music2)
         first.isAntiDuckEnabled = true
-        first.preset = AntiDuckPreset(protectedBundleIDs: ["x"], othersBoost: 1.2)
+        first.preset = AntiDuckPreset(callEngineBundleIDs: ["x"])
 
         let reloaded = SettingsStore(backend: backend)
         #expect(reloaded.setting(for: music).gain == 0.3)
         #expect(reloaded.setting(for: music2).isMuted)
         #expect(reloaded.isAntiDuckEnabled)
-        #expect(reloaded.preset.protectedBundleIDs == ["x"])
+        #expect(reloaded.preset.callEngineBundleIDs == ["x"])
     }
 
     @Test("corrupt stored data falls back to defaults instead of crashing")
