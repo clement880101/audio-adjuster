@@ -30,7 +30,13 @@ final class AppModel: ObservableObject {
     private let settings: SettingsStore
     private let system = CoreAudioSystem()
     private let coordinator: ChannelCoordinator
-    private lazy var registry = AudioProcessRegistry(source: system, names: RunningAppNameResolver())
+    private lazy var registry = AudioProcessRegistry(
+        source: system,
+        names: RunningAppNameResolver(),
+        // Apps the user has already set a volume for stay listed across a restart, so
+        // their setting remains reachable without waiting for them to play again.
+        initiallyKnown: Set(settings.adjustedBundleIDs)
+    )
 
     private var refreshTimer: Timer?
     private var duckTimer: Timer?

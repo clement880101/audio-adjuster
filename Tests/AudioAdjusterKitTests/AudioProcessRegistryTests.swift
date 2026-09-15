@@ -13,17 +13,8 @@ private final class FakeSource: AudioProcessSource {
 /// does for processes that are not running applications.
 private final class FakeNames: AppNameResolver {
     var table: [String: String]
-    /// Bundle IDs that are ordinary apps rather than background agents. By default every
-    /// named entry is a regular app; `agents` marks the exceptions.
-    var agents: Set<String>
-    init(_ table: [String: String] = [:], agents: Set<String> = []) {
-        self.table = table
-        self.agents = agents
-    }
-    func resolve(pid: pid_t, bundleID: String) -> ResolvedApp? {
-        guard let name = table[bundleID] else { return nil }
-        return ResolvedApp(name: name, isRegularApp: !agents.contains(bundleID))
-    }
+    init(_ table: [String: String] = [:]) { self.table = table }
+    func displayName(pid: pid_t, bundleID: String) -> String? { table[bundleID] }
 }
 
 private func raw(
@@ -59,45 +50,86 @@ struct AudioProcessRegistryTests {
         #expect(result.map(\.bundleID) == ["other"])
     }
 
-    @Test("a silent system daemon with no running-application entry is hidden")
-    func hidesIdleDaemons() {
+    @Test("a process that has never made a sound is hidden")
+    func hidesSilentProcesses() {
+        // Core Audio lists around thirty of these; only the audible ones are wanted.
         let result = AudioProcessRegistry.assemble(
-            raw: [raw(1, bundleID: "com.apple.audiomxd", isRunning: true, isRunningOutput: false)],
+            raw: [
+                raw(1, pid: 1, bundleID: "com.apple.audiomxd", isRunning: true, isRunningOutput: false),
+                raw(2, pid: 2, bundleID: "com.apple.Music", isRunning: false, isRunningOutput: false),
+            ],
             excludingPID: 0,
-            names: FakeNames()
+            names: FakeNames(["com.apple.Music": "Music"])
         )
         #expect(result.isEmpty)
     }
 
-    @Test("a silent background agent is hidden even though macOS names it")
-    func hidesNamedAgents() {
-        // loginwindow, PowerChime and SiriNCService all resolve to a name, so a name alone
-        // cannot distinguish them from real apps. Having a Dock icon can.
-        let names = FakeNames(
-            ["com.apple.loginwindow": "loginwindow", "com.apple.Music": "Music"],
-            agents: ["com.apple.loginwindow"]
-        )
-        let result = AudioProcessRegistry.assemble(
-            raw: [
-                raw(1, pid: 1, bundleID: "com.apple.loginwindow", isRunningOutput: false),
-                raw(2, pid: 2, bundleID: "com.apple.Music", isRunningOutput: false),
-            ],
-            excludingPID: 0,
-            names: names
-        )
-        #expect(result.map(\.name) == ["Music"])
-    }
-
-    @Test("an agent that is actually making sound is still shown")
-    func showsAudibleAgents() {
-        // If the user can hear it, they should be able to turn it down, whatever it is.
-        let names = FakeNames(["com.apple.PowerChime": "PowerChime"], agents: ["com.apple.PowerChime"])
+    @Test("anything actually making sound is shown, whatever it is")
+    func showsAnythingAudible() {
+        // If the user can hear it they should be able to turn it down, app or daemon.
         let result = AudioProcessRegistry.assemble(
             raw: [raw(1, bundleID: "com.apple.PowerChime", isRunningOutput: true)],
             excludingPID: 0,
-            names: names
+            names: FakeNames(["com.apple.PowerChime": "PowerChime"])
         )
         #expect(result.map(\.name) == ["PowerChime"])
+    }
+
+    @Test("an app that has played is remembered once it falls silent")
+    func remembersAppsThatHavePlayed() {
+        // Otherwise the control vanishes the moment a track ends, which is exactly when
+        // the user reaches for it.
+        let result = AudioProcessRegistry.assemble(
+            raw: [raw(1, bundleID: "com.apple.Music", isRunningOutput: false)],
+            excludingPID: 0,
+            names: FakeNames(["com.apple.Music": "Music"]),
+            hasEverPlayed: ["com.apple.Music"]
+        )
+        #expect(result.count == 1)
+        #expect(result[0].isPlaying == false)
+    }
+
+    @Test("a remembered app that quits is dropped")
+    func forgetsQuitApps() {
+        // No process object means nothing to tap, so the row would be a lie.
+        let result = AudioProcessRegistry.assemble(
+            raw: [],
+            excludingPID: 0,
+            names: FakeNames(),
+            hasEverPlayed: ["com.apple.Music"]
+        )
+        #expect(result.isEmpty)
+    }
+
+    @Test("playing is remembered across refreshes")
+    func registryRemembersAcrossRefreshes() {
+        let source = FakeSource([raw(1, bundleID: "com.apple.Music", isRunningOutput: true)])
+        let registry = AudioProcessRegistry(
+            source: source,
+            names: FakeNames(["com.apple.Music": "Music"]),
+            ownPID: 0
+        )
+        registry.refresh()
+        #expect(registry.processes.map(\.isPlaying) == [true])
+
+        source.raw = [raw(1, bundleID: "com.apple.Music", isRunningOutput: false)]
+        registry.refresh()
+        #expect(registry.processes.count == 1)
+        #expect(registry.processes[0].isPlaying == false)
+    }
+
+    @Test("apps named up front are listed before they ever play")
+    func initiallyKnownAppsAreListed() {
+        // Apps the user has already set a volume for must stay reachable after a restart.
+        let source = FakeSource([raw(1, bundleID: "com.apple.Music", isRunningOutput: false)])
+        let registry = AudioProcessRegistry(
+            source: source,
+            names: FakeNames(["com.apple.Music": "Music"]),
+            ownPID: 0,
+            initiallyKnown: ["com.apple.Music"]
+        )
+        registry.refresh()
+        #expect(registry.processes.map(\.name) == ["Music"])
     }
 
     @Test("a daemon that is actually playing is listed anyway")
@@ -109,19 +141,6 @@ struct AudioProcessRegistryTests {
         )
         #expect(result.count == 1)
         #expect(result[0].isPlaying)
-    }
-
-    @Test("an open app is listed while silent, marked not playing")
-    func silentAppIsListed() {
-        // isRunning is 0 for an idle Music, so being a regular app is what keeps it listed.
-        let result = AudioProcessRegistry.assemble(
-            raw: [raw(1, bundleID: "com.apple.Music", isRunning: false, isRunningOutput: false)],
-            excludingPID: 0,
-            names: FakeNames(["com.apple.Music": "Music"])
-        )
-        #expect(result.count == 1)
-        #expect(result[0].isPlaying == false)
-        #expect(result[0].name == "Music")
     }
 
     @Test("duplicate bundle IDs collapse, preferring the instance making sound")
@@ -185,7 +204,8 @@ struct AudioProcessRegistryTests {
                 raw(2, pid: 2, bundleID: "z", isRunningOutput: true),
             ],
             excludingPID: 0,
-            names: names
+            names: names,
+            hasEverPlayed: ["a"]
         )
         #expect(result.map(\.name) == ["Zebra", "Apple"])
     }

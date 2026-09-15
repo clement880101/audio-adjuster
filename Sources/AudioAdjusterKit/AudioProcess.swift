@@ -44,20 +44,7 @@ public protocol AudioProcessSource: AnyObject {
     func rawProcesses() -> [RawAudioProcess]
 }
 
-/// What the running-application list knows about a process.
-public struct ResolvedApp: Equatable, Sendable {
-    public let name: String
-    /// True for an ordinary app with a Dock icon. Menu bar agents and background daemons
-    /// are false, which is what separates Firefox from `loginwindow`.
-    public let isRegularApp: Bool
-
-    public init(name: String, isRegularApp: Bool) {
-        self.name = name
-        self.isRegularApp = isRegularApp
-    }
-}
-
 /// Seam over `NSRunningApplication`, for the same reason.
 public protocol AppNameResolver: AnyObject {
-    func resolve(pid: pid_t, bundleID: String) -> ResolvedApp?
+    func displayName(pid: pid_t, bundleID: String) -> String?
 }

@@ -144,17 +144,8 @@ public final class RunningAppNameResolver: AppNameResolver {
 
     public init() {}
 
-    public func resolve(pid: pid_t, bundleID: String) -> ResolvedApp? {
-        if let friendly = RunningAppNameResolver.friendlyNames[bundleID] {
-            // Shown whatever its activation policy, because the user can hear it.
-            return ResolvedApp(name: friendly, isRegularApp: true)
-        }
-        return resolveRunningApplication(pid: pid, bundleID: bundleID)
-    }
-
-    private func resolveRunningApplication(pid: pid_t, bundleID: String) -> ResolvedApp? {
-        guard let application = NSRunningApplication(processIdentifier: pid),
-              let name = application.localizedName else { return nil }
-        return ResolvedApp(name: name, isRegularApp: application.activationPolicy == .regular)
+    public func displayName(pid: pid_t, bundleID: String) -> String? {
+        if let friendly = RunningAppNameResolver.friendlyNames[bundleID] { return friendly }
+        return NSRunningApplication(processIdentifier: pid)?.localizedName
     }
 }

@@ -8,22 +8,42 @@ public final class AudioProcessRegistry {
     private let names: AppNameResolver
     private let ownPID: pid_t
 
+    /// Every app seen producing audio since launch. An app that falls silent stays on the
+    /// list, because a volume control you can only reach while a sound is playing is
+    /// unusable — by the time you have found it, the thing you wanted to turn down has
+    /// finished.
+    private var hasEverPlayed: Set<String>
+
     public private(set) var processes: [AudioProcess] = []
 
     /// Called after `refresh()` changes the list.
     public var onChange: (([AudioProcess]) -> Void)?
 
-    public init(source: AudioProcessSource, names: AppNameResolver, ownPID: pid_t = ProcessInfo.processInfo.processIdentifier) {
+    /// - Parameter initiallyKnown: apps to list from the start, even before they make a
+    ///   sound. Used for apps the user has already adjusted, so their settings remain
+    ///   reachable across a restart.
+    public init(
+        source: AudioProcessSource,
+        names: AppNameResolver,
+        ownPID: pid_t = ProcessInfo.processInfo.processIdentifier,
+        initiallyKnown: Set<String> = []
+    ) {
         self.source = source
         self.names = names
         self.ownPID = ownPID
+        self.hasEverPlayed = initiallyKnown
     }
 
     public func refresh() {
+        let raw = source.rawProcesses()
+        for entry in raw where entry.isRunningOutput {
+            if let bundleID = entry.bundleID, !bundleID.isEmpty { hasEverPlayed.insert(bundleID) }
+        }
         let updated = AudioProcessRegistry.assemble(
-            raw: source.rawProcesses(),
+            raw: raw,
             excludingPID: ownPID,
-            names: names
+            names: names,
+            hasEverPlayed: hasEverPlayed
         )
         guard updated != processes else { return }
         processes = updated
@@ -36,7 +56,8 @@ public final class AudioProcessRegistry {
     public static func assemble(
         raw: [RawAudioProcess],
         excludingPID ownPID: pid_t,
-        names: AppNameResolver
+        names: AppNameResolver,
+        hasEverPlayed: Set<String> = []
     ) -> [AudioProcess] {
         var byBundleID: [String: AudioProcess] = [:]
 
@@ -47,26 +68,22 @@ public final class AudioProcessRegistry {
             // Tapping ourselves would feed our own output back into our input.
             guard entry.pid != ownPID else { continue }
 
-            // Core Audio lists around thirty processes and most are system daemons that
-            // hold an audio client without ever being something a person wants a volume
-            // slider for — loginwindow, universalaccessd, PowerChime, SiriNCService. Many
-            // of those do have a running-application entry, so merely having one is not
-            // enough to tell them apart from real apps.
+            // Only things that actually make sound. Core Audio lists around thirty
+            // processes, most of them daemons holding an audio client without ever being
+            // audible, and listing those buries the handful that matter.
             //
-            // Activation policy is: an ordinary app has a Dock icon, an agent or daemon
-            // does not. Anything actually producing sound is shown regardless, since the
-            // user can hear it and will want to control it whatever it is.
+            // Having made a sound earlier counts: an app keeps its place after it goes
+            // quiet, so its volume stays adjustable between tracks or before it starts.
             //
-            // `isRunning` here means "has an active audio client", not "is open", so it is
-            // 0 for an idle Music or Firefox and cannot be used to decide this.
-            let resolved = names.resolve(pid: entry.pid, bundleID: bundleID)
-            guard entry.isRunningOutput || resolved?.isRegularApp == true else { continue }
+            // `isRunning` is no help here — it means "has an audio client", not "is
+            // audible", and is 0 for an idle Music.
+            guard entry.isRunningOutput || hasEverPlayed.contains(bundleID) else { continue }
 
             let process = AudioProcess(
                 objectID: entry.objectID,
                 pid: entry.pid,
                 bundleID: bundleID,
-                name: resolved?.name ?? bundleID,
+                name: names.displayName(pid: entry.pid, bundleID: bundleID) ?? bundleID,
                 isPlaying: entry.isRunningOutput
             )
 
