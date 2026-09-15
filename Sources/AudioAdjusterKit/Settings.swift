@@ -17,30 +17,24 @@ public struct AppGainSetting: Codable, Equatable, Sendable {
     public var isUnchanged: Bool { self == .unchanged }
 }
 
-/// Configuration for ducking behaviour.
+/// Which processes carry call audio.
 ///
 /// Measured on a live FaceTime call: during a call macOS attenuates every process that is
-/// not the call itself by roughly 0.033 (about -30 dB). A muted tap captures audio
-/// *before* that, but our own rendered output is then ducked in turn.
+/// not the call itself by roughly 0.033 (about -30 dB). The call app is exempt — until we
+/// tap it, at which point its audio becomes ours and is ducked like anything else.
 ///
-/// Two consequences, both handled by compensation rather than by refusing to act:
-///
-/// - Other apps are already ducked, so cancelling it means boosting by ~1/0.033. That is
-///   the anti-duck feature.
-/// - The call app is *exempt* from ducking until we tap it, at which point its audio
-///   becomes ours and gets ducked like anything else. So a tapped call app needs the same
-///   compensation just to sound unchanged — without it, adjusting the call makes it much
-///   quieter, which is not a slider working badly but a slider doing harm.
-public struct AntiDuckPreset: Codable, Equatable, Sendable {
+/// So a tapped call engine needs duck compensation simply to sound unchanged. That is not
+/// a feature the user chooses; without it, adjusting a call makes it drastically quieter.
+/// `DuckServo` measures the attenuation live and `ChannelCoordinator` cancels it.
+public struct CallAudioSettings: Codable, Equatable, Sendable {
 
-    /// Processes that carry call audio. They are adjustable, but always compensated.
     public var callEngineBundleIDs: Set<String>
 
     public init(callEngineBundleIDs: Set<String>) {
         self.callEngineBundleIDs = callEngineBundleIDs
     }
 
-    public static let `default` = AntiDuckPreset(
+    public static let `default` = CallAudioSettings(
         callEngineBundleIDs: [
             "com.apple.FaceTime",
             // The engine that actually renders FaceTime audio.
@@ -75,25 +69,21 @@ public final class SettingsStore {
 
     private enum Key {
         static let apps = "apps"
-        static let preset = "antiDuckPreset"
-        static let antiDuckEnabled = "antiDuckEnabled"
+        static let callAudio = "callAudio"
     }
 
     private let backend: SettingsBackend
     private var apps: [String: AppGainSetting]
 
-    public var preset: AntiDuckPreset { didSet { persistPreset() } }
-    public var isAntiDuckEnabled: Bool { didSet { persistAntiDuckEnabled() } }
+    public var callAudio: CallAudioSettings { didSet { persistCallAudio() } }
 
     public init(backend: SettingsBackend = UserDefaults.standard) {
         self.backend = backend
         let decoder = JSONDecoder()
         self.apps = backend.loadData(forKey: Key.apps)
             .flatMap { try? decoder.decode([String: AppGainSetting].self, from: $0) } ?? [:]
-        self.preset = backend.loadData(forKey: Key.preset)
-            .flatMap { try? decoder.decode(AntiDuckPreset.self, from: $0) } ?? .default
-        self.isAntiDuckEnabled = backend.loadData(forKey: Key.antiDuckEnabled)
-            .flatMap { try? decoder.decode(Bool.self, from: $0) } ?? false
+        self.callAudio = backend.loadData(forKey: Key.callAudio)
+            .flatMap { try? decoder.decode(CallAudioSettings.self, from: $0) } ?? .default
     }
 
     public func setting(for bundleID: String) -> AppGainSetting {
@@ -104,7 +94,7 @@ public final class SettingsStore {
     /// but their channel is always duck-compensated, because tapping them costs them the
     /// exemption from ducking that they would otherwise have.
     public func isCallEngine(_ bundleID: String) -> Bool {
-        preset.callEngineBundleIDs.contains(bundleID)
+        callAudio.callEngineBundleIDs.contains(bundleID)
     }
 
     public func setGain(_ gain: Float, for bundleID: String) {
@@ -154,10 +144,7 @@ public final class SettingsStore {
     /// True when this app needs a tap: either the user changed it, or anti-duck is on and
     /// would move it away from unity.
     public func requiresChannel(for bundleID: String) -> Bool {
-        if !setting(for: bundleID).isUnchanged { return true }
-        // Anti-duck cancels the attenuation applied to everything that is not the call, so
-        // it needs a channel on those apps in order to compensate them.
-        return isAntiDuckEnabled && !isCallEngine(bundleID)
+        !setting(for: bundleID).isUnchanged
     }
 
     private func update(_ setting: AppGainSetting, for bundleID: String) {
@@ -173,11 +160,7 @@ public final class SettingsStore {
         backend.saveData(try? JSONEncoder().encode(apps), forKey: Key.apps)
     }
 
-    private func persistPreset() {
-        backend.saveData(try? JSONEncoder().encode(preset), forKey: Key.preset)
-    }
-
-    private func persistAntiDuckEnabled() {
-        backend.saveData(try? JSONEncoder().encode(isAntiDuckEnabled), forKey: Key.antiDuckEnabled)
+    private func persistCallAudio() {
+        backend.saveData(try? JSONEncoder().encode(callAudio), forKey: Key.callAudio)
     }
 }

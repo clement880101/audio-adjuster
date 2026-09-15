@@ -14,14 +14,6 @@ final class AppModel: ObservableObject {
     /// Apps that could not be controlled, so the UI can say so instead of showing a
     /// slider that does nothing.
     @Published private(set) var failures: [String: String] = [:]
-    @Published var isAntiDuckEnabled: Bool {
-        didSet {
-            guard isAntiDuckEnabled != settings.isAntiDuckEnabled else { return }
-            settings.isAntiDuckEnabled = isAntiDuckEnabled
-            if !isAntiDuckEnabled { coordinator.releaseDuck() }
-            coordinator.reconcile()
-        }
-    }
 
     /// Shared so the app delegate can start and stop it without depending on a view
     /// having appeared first.
@@ -44,10 +36,8 @@ final class AppModel: ObservableObject {
     private let log = Logger(subsystem: "com.audioadjuster", category: "model")
 
 
-    /// Live anti-duck state, for the menu bar.
-    @Published private(set) var duckCompensation: Float = 1
+    /// True while a call is in progress. Call rows are duck-compensated then.
     @Published private(set) var isCallActive = false
-    @Published private(set) var isDuckCalibrated = false
     private var processListListener: AudioObjectPropertyListenerBlock?
     private var outputDeviceListener: AudioObjectPropertyListenerBlock?
 
@@ -55,7 +45,6 @@ final class AppModel: ObservableObject {
         let settings = SettingsStore()
         self.settings = settings
         self.coordinator = ChannelCoordinator(settings: settings)
-        self.isAntiDuckEnabled = settings.isAntiDuckEnabled
 
         coordinator.onError = { [weak self] bundleID, error in
             Task { @MainActor in self?.failures[bundleID] = "\(error)" }
@@ -101,8 +90,6 @@ final class AppModel: ObservableObject {
         coordinator.tick(processes: processes)
         let active = processes.contains { settings.isCallEngine($0.bundleID) && $0.isPlaying }
         if active != isCallActive { isCallActive = active }
-        if coordinator.duckCompensation != duckCompensation { duckCompensation = coordinator.duckCompensation }
-        if coordinator.isDuckCalibrated != isDuckCalibrated { isDuckCalibrated = coordinator.isDuckCalibrated }
     }
 
     // MARK: - Per-app controls
@@ -142,17 +129,15 @@ final class AppModel: ObservableObject {
         objectWillChange.send()
     }
 
-    /// Returns everything to normal volume and releases every tap.
+    /// Returns every app to 100%, unmutes everything, and releases every tap.
     func resetAll() {
         for bundleID in settings.adjustedBundleIDs { settings.reset(bundleID) }
-        isAntiDuckEnabled = false
-        settings.isAntiDuckEnabled = false
         failures.removeAll()
         coordinator.reconcile()
         objectWillChange.send()
     }
 
-    var hasAdjustments: Bool { !settings.adjustedBundleIDs.isEmpty || isAntiDuckEnabled }
+    var hasAdjustments: Bool { !settings.adjustedBundleIDs.isEmpty }
 
     // MARK: - Refresh and observation
 

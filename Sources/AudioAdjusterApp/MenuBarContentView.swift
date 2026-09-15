@@ -5,6 +5,10 @@ import SwiftUI
 struct MenuBarContentView: View {
     @ObservedObject var model: AppModel
 
+    /// Above this many apps the list scrolls instead of growing.
+    private static let rowsBeforeScrolling = 12
+    private static let scrollingHeight: CGFloat = 460
+
     var body: some View {
         DebugLog.write("VIEW body rebuilt with " + model.processes.map {
             "\($0.name)\($0.isPlaying ? "*" : "")"
@@ -14,7 +18,7 @@ struct MenuBarContentView: View {
             Divider()
 
             if model.processes.isEmpty {
-                Text("No apps are playing audio.")
+                Text("Nothing has played yet.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -23,10 +27,8 @@ struct MenuBarContentView: View {
                 // Only past this many apps is a scroller worth the loss of a window that
                 // fits its contents. A fixed height here, not a cap: a ScrollView has no
                 // intrinsic height, so a window sizing itself to content would collapse it.
-                ScrollView {
-                    rows
-                }
-                .frame(height: Self.scrollingHeight)
+                ScrollView { rows }
+                    .frame(height: Self.scrollingHeight)
             } else {
                 // The window grows to fit however many apps there are.
                 rows
@@ -37,10 +39,6 @@ struct MenuBarContentView: View {
         }
         .frame(width: 320)
     }
-
-    /// Above this many apps the list scrolls instead of growing.
-    private static let rowsBeforeScrolling = 12
-    private static let scrollingHeight: CGFloat = 460
 
     private var rows: some View {
         VStack(spacing: 6) {
@@ -61,50 +59,30 @@ struct MenuBarContentView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if model.hasAdjustments {
-                Button("Reset") { model.resetAll() }
-                    .buttonStyle(.link)
-                    .font(.caption)
-            }
+            // Always present. Hiding it until something was adjusted meant it appeared
+            // only once you already needed it, which is too late to go looking.
+            Button("Reset all") { model.resetAll() }
+                .buttonStyle(.link)
+                .font(.caption)
+                .disabled(!model.hasAdjustments)
+                .help("Set every app back to 100% and unmute")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Only shown during a call. Outside one there is no duck to cancel, and a
-            // switch that cannot do anything is worse than no switch.
-            if model.isCallActive {
-                Toggle(isOn: $model.isAntiDuckEnabled) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Anti-duck")
-                        Text(antiDuckStatus)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .toggleStyle(.switch)
-            }
-
-            HStack {
-                Text("Drag a bar to set volume")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-                Button("Quit") { NSApp.terminate(nil) }
-                    .buttonStyle(.link)
-                    .font(.caption)
-            }
+        HStack {
+            Text("Drag a bar to set volume")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            Spacer()
+            Button("Quit") { NSApp.terminate(nil) }
+                .buttonStyle(.link)
+                .font(.caption)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-    }
-
-    private var antiDuckStatus: String {
-        guard model.isAntiDuckEnabled else { return "Restore audio muted by the call" }
-        guard model.isDuckCalibrated else { return "Measuring the call's ducking…" }
-        return String(format: "Compensating %.0f×", model.duckCompensation)
     }
 }
 
@@ -113,7 +91,6 @@ private struct AppRow: View {
     @ObservedObject var model: AppModel
     let process: AudioProcess
 
-    private var isCallEngine: Bool { model.isCallEngine(process.bundleID) }
     private var isMuted: Bool { model.isMuted(process.bundleID) }
     private var gain: Float { model.gain(for: process.bundleID) }
 
@@ -122,15 +99,12 @@ private struct AppRow: View {
             VolumeBar(
                 level: gain,
                 isMuted: isMuted,
-                isEnabled: true,
                 isPlaying: process.isPlaying,
                 onChange: { model.setGain($0, for: process.bundleID) }
             ) {
                 HStack(spacing: 7) {
                     icon
-                    Text(process.name)
-                        .lineLimit(1)
-                        .foregroundStyle(AnyShapeStyle(.primary))
+                    Text(process.name).lineLimit(1)
                     Spacer(minLength: 4)
                     Text(label)
                         .font(.caption.monospacedDigit())
@@ -143,17 +117,13 @@ private struct AppRow: View {
             }
 
             if let failure = model.failure(for: process.bundleID) {
-                caption(failure).foregroundStyle(.red)
+                Text(failure)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+                    .padding(.leading, 2)
             }
         }
-    }
-
-    private func caption(_ text: String) -> some View {
-        Text(text)
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .lineLimit(2)
-            .padding(.leading, 2)
     }
 
     private var label: String {
@@ -180,7 +150,6 @@ private struct AppRow: View {
 private struct VolumeBar<Content: View>: View {
     let level: Float
     let isMuted: Bool
-    let isEnabled: Bool
     let isPlaying: Bool
     let onChange: (Float) -> Void
     @ViewBuilder let content: Content
@@ -201,12 +170,11 @@ private struct VolumeBar<Content: View>: View {
                 // minimumDistance 0 so a plain click sets the level too.
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
-                        guard isEnabled, width > 0 else { return }
+                        guard width > 0 else { return }
                         let position = min(max(value.location.x / width, 0), 1)
                         onChange(Float(position) * GainStage.maxGain)
                     }
             )
-            .opacity(isEnabled ? 1 : 0.55)
     }
 
     private var track: some View {
@@ -233,14 +201,12 @@ private struct VolumeBar<Content: View>: View {
                     }
                     .onChange(of: geometry.size.width) { _, newWidth in
                         width = newWidth
-                        DebugLog.write("LAYOUT bar width changed to \(newWidth)")
                     }
             }
         }
     }
 
     private var fillStyle: AnyShapeStyle {
-        if !isEnabled { return AnyShapeStyle(.quaternary) }
         if isMuted { return AnyShapeStyle(.tertiary) }
         return AnyShapeStyle(Color.accentColor.opacity(isPlaying ? 0.85 : 0.45))
     }

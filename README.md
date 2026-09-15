@@ -61,44 +61,27 @@ Two cases worth knowing:
 Call engines never participate: they cannot be tapped at all, so they can neither give nor
 take volume.
 
-## Anti-duck
+## Call audio
 
-There is no supported macOS API to switch off the ducking another app causes; every
-ducking API in the SDK is the knob the *calling* app sets on itself. What made this
-possible instead was measuring what ducking actually does, on a live FaceTime call:
+macOS attenuates every process that is not the call by roughly 0.033 (about -30 dB) while
+a call is in progress. A muted tap captures audio *before* that, but our own rendered
+output is then ducked in turn — so a tapped call app, which was exempt until we touched
+it, would come out drastically quieter.
 
-| measurement | peak |
-|---|---|
-| test tone, no call | 0.0275 |
-| captured via **unmuted** tap, during call | 0.0009 |
-| captured via **mutedWhenTapped**, during call | 0.0275 |
-| our own rendered output, observed back | ratio 0.0334 |
+`DuckServo` measures that attenuation live, by attaching an unmuted, silent tap to this
+process and comparing what we wrote with what reached the device, and the coordinator
+cancels it on call channels. Measured convergence on a real call: 29.2x -> 31.4x -> 31.6x,
+with observed output settling at 0.0275 against an un-ducked reference of 0.0275.
 
-Two facts follow. A muted tap captures audio *before* ducking is applied. And the system
-then ducks *our* output by the same amount, since during a call we are just "other audio".
-
-So the duck is a linear attenuation of about 0.033 that we can invert: capture pre-duck,
-boost by ~30x, and the system's own ducking brings it back to the original level. Core
-Audio's float buffers carry values past full scale without clipping (rendered peaks of
-0.82 / 1.65 / 3.29 came back as 0.0277 / 0.0557 / 0.1115 — linear throughout), so this
-works for loud sources too.
-
-The app measures the ratio live rather than assuming 30x, by attaching an unmuted, silent
-tap to itself and comparing what it wrote with what reached the device. Measured
-convergence on a real call: 29.2x -> 31.4x -> 31.6x, with observed output settling at
-0.0275 against an un-ducked reference of 0.0275.
-
-**The call app is never tapped.** Its audio is exempt from ducking right up until we
-re-render it as ours, at which point it gets ducked — so tapping it makes calls quieter,
-not louder. `avconferenced`, FaceTime and `TelephonyUtilities` are refused a channel.
+This is not a feature with a switch. It is what makes the call app's volume bar behave at
+all, and it applies whenever a call channel exists.
 
 ### The safety property
 
 Compensation reaches ~30x. If a call ends while that is applied, audio would be 30x too
 loud. `DuckServo` is asymmetric about this throughout:
 
-- compensation applies only while a call engine is actively producing audio, checked
-  every 200ms;
+- it applies only while a call engine is actively producing audio, checked every 200ms;
 - it rises gradually but falls in a single step;
 - it is hard-capped at 40x regardless of measurement;
 - unusable or non-finite measurements hold the current value instead of guessing;

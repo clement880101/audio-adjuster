@@ -66,12 +66,12 @@ struct SettingsStoreTests {
         #expect(store.setting(for: music) == .unchanged)
     }
 
-    @Test("anti-duck needs a channel on every other app, to compensate them")
-    func antiDuckNeedsChannels() {
+
+    @Test("gain stays within the supported range")
+    func gainStaysClamped() {
         let (store, _) = makeStore()
-        #expect(store.requiresChannel(for: music) == false)
-        store.isAntiDuckEnabled = true
-        #expect(store.requiresChannel(for: music))
+        store.setGain(GainStage.maxGain, for: music)
+        #expect(store.effectiveGain(for: music) == GainStage.maxGain)
     }
 
     @Test("the call app is adjustable like anything else")
@@ -86,48 +86,17 @@ struct SettingsStoreTests {
         #expect(store.requiresChannel(for: "com.apple.avconferenced"))
     }
 
-    @Test("anti-duck does not tap the call app, which is not ducked")
-    func antiDuckSkipsCallApp() {
-        let (store, _) = makeStore()
-        store.isAntiDuckEnabled = true
-        // The call is the thing causing the duck, not a victim of it.
-        #expect(store.requiresChannel(for: "com.apple.avconferenced") == false)
-        #expect(store.requiresChannel(for: music))
-    }
 
-    @Test("anti-duck leaves the user's own gain alone")
-    func antiDuckLeavesGainAlone() {
-        let (store, _) = makeStore()
-        store.setGain(0.5, for: music)
-        store.isAntiDuckEnabled = true
-        // Compensation is applied by the channel, not folded into the user's number, so
-        // the slider keeps meaning what it says.
-        #expect(store.effectiveGain(for: music) == 0.5)
-    }
 
-    @Test("anti-duck never unmutes a muted app")
-    func antiDuckRespectsMute() {
-        let (store, _) = makeStore()
-        store.setMuted(true, for: music)
-        store.isAntiDuckEnabled = true
-        #expect(store.effectiveGain(for: music) == 0)
-    }
 
-    @Test("anti-duck alone requires channels for otherwise untouched apps")
-    func antiDuckRequiresChannels() {
+    @Test("only an app the user has changed needs a channel")
+    func onlyChangedAppsNeedChannels() {
         let (store, _) = makeStore()
         #expect(store.requiresChannel(for: music) == false)
-        store.isAntiDuckEnabled = true
+        store.setGain(0.5, for: music)
         #expect(store.requiresChannel(for: music))
     }
 
-    @Test("gain stays within the supported range")
-    func gainStaysClamped() {
-        let (store, _) = makeStore()
-        store.setGain(GainStage.maxGain, for: music)
-        store.isAntiDuckEnabled = true
-        #expect(store.effectiveGain(for: music) == GainStage.maxGain)
-    }
 
     @Test("settings survive a restart")
     func persistence() {
@@ -135,23 +104,21 @@ struct SettingsStoreTests {
         let first = SettingsStore(backend: backend)
         first.setGain(0.3, for: music)
         first.setMuted(true, for: music2)
-        first.isAntiDuckEnabled = true
-        first.preset = AntiDuckPreset(callEngineBundleIDs: ["x"])
+        first.callAudio = CallAudioSettings(callEngineBundleIDs: ["x"])
 
         let reloaded = SettingsStore(backend: backend)
         #expect(reloaded.setting(for: music).gain == 0.3)
         #expect(reloaded.setting(for: music2).isMuted)
-        #expect(reloaded.isAntiDuckEnabled)
-        #expect(reloaded.preset.callEngineBundleIDs == ["x"])
+        #expect(reloaded.callAudio.callEngineBundleIDs == ["x"])
     }
 
     @Test("corrupt stored data falls back to defaults instead of crashing")
     func corruptDataIsSurvivable() {
         let backend = InMemorySettingsBackend()
         backend.saveData(Data("not json".utf8), forKey: "apps")
-        backend.saveData(Data("not json".utf8), forKey: "antiDuckPreset")
+        backend.saveData(Data("not json".utf8), forKey: "callAudio")
         let store = SettingsStore(backend: backend)
         #expect(store.setting(for: music) == .unchanged)
-        #expect(store.preset == .default)
+        #expect(store.callAudio == .default)
     }
 }

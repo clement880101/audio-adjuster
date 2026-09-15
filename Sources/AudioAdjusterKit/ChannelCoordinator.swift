@@ -238,13 +238,12 @@ public final class ChannelCoordinator {
 
     /// Decides each channel's compensation.
     ///
-    /// A tapped call engine is always compensated: tapping it costs it the exemption from
-    /// ducking it would otherwise have, so without this its slider makes the call quieter
-    /// instead of louder. Everything else is compensated only when the user has asked for
-    /// anti-duck, since those apps sound the same tapped or not until they do.
+    /// Only a tapped call engine needs it, and it always needs it: tapping costs the call
+    /// its exemption from ducking, so without compensation its slider would make the call
+    /// drastically quieter instead of louder. Every other app is already ducked whether we
+    /// tap it or not, so leaving it alone keeps it sounding the same.
     private func compensation(for bundleID: String) -> Float {
-        if settings.isCallEngine(bundleID) { return servo.compensation }
-        return settings.isAntiDuckEnabled ? servo.compensation : 1
+        settings.isCallEngine(bundleID) ? servo.compensation : 1
     }
 
     private func applyCompensation() {

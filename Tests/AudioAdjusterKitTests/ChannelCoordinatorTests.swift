@@ -82,29 +82,7 @@ struct ChannelCoordinatorPlanTests {
         #expect(plan.attach == [music])
     }
 
-    @Test("anti-duck attaches other apps but not the call app")
-    func antiDuckAttachesEverythingButTheCall() {
-        let store = makeStore()
-        store.isAntiDuckEnabled = true
-        let plan = ChannelCoordinator.plan(
-            processes: [process(music, objectID: 1), process(faceTime, objectID: 2)],
-            existing: [],
-            settings: store
-        )
-        #expect(plan.attach == [music])
-    }
 
-    @Test("switching anti-duck off releases the channels it created")
-    func antiDuckOffReleases() {
-        let store = makeStore()
-        let plan = ChannelCoordinator.plan(
-            processes: [process(music, objectID: 1), process("com.apple.Podcasts", objectID: 2)],
-            existing: [music, "com.apple.Podcasts"],
-            settings: store
-        )
-        #expect(plan.detach == [music, "com.apple.Podcasts"])
-        #expect(plan.update.isEmpty)
-    }
 
     @Test("an adjusted call app keeps its channel")
     func callAppKeepsChannel() {
@@ -115,12 +93,4 @@ struct ChannelCoordinatorPlanTests {
         #expect(plan.update == [faceTime: 1.5])
     }
 
-    @Test("anti-duck leaves an app the user muted at silence")
-    func antiDuckKeepsMuteSilent() {
-        let store = makeStore()
-        store.setMuted(true, for: music)
-        store.isAntiDuckEnabled = true
-        let plan = ChannelCoordinator.plan(processes: [process(music)], existing: [music], settings: store)
-        #expect(plan.update == [music: 0])
-    }
 }
