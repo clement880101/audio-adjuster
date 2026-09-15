@@ -21,17 +21,32 @@ enum DebugLog {
         return FileManager.default.fileExists(atPath: path)
     }()
 
+    /// Beyond this the log is truncated. It is a diagnostic, not an archive, and it
+    /// previously reached 6MB by writing a line every second.
+    private static let sizeLimit = 512 * 1024
+
+    private static var lastMessage = ""
+
     static func write(_ message: @autoclosure () -> String) {
         guard isEnabled else { return }
-        let line = "\(formatter.string(from: Date())) \(message())\n"
+        let text = message()
+        // The view rebuilds once a second whether or not anything changed; logging every
+        // one of those buried the events that matter and grew the file without bound.
+        guard text != lastMessage else { return }
+        lastMessage = text
+
+        let line = "\(formatter.string(from: Date())) \(text)\n"
         queue.async {
             guard let data = line.data(using: .utf8) else { return }
+            let url = URL(fileURLWithPath: path)
             if let handle = FileHandle(forWritingAtPath: path) {
-                handle.seekToEndOfFile()
+                if handle.seekToEndOfFile() > UInt64(sizeLimit) {
+                    try? handle.truncate(atOffset: 0)
+                }
                 handle.write(data)
                 try? handle.close()
             } else {
-                try? data.write(to: URL(fileURLWithPath: path))
+                try? data.write(to: url)
             }
         }
     }

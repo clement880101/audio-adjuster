@@ -134,8 +134,25 @@ public final class CoreAudioSystem: AudioProcessSource {
 
 /// Resolves display names from the running-application list.
 public final class RunningAppNameResolver: AppNameResolver {
+
+    /// Processes that carry audio on another app's behalf, named as the user thinks of
+    /// them rather than as the process is called.
+    private static let friendlyNames = [
+        "com.apple.avconferenced": "FaceTime call audio",
+        "com.apple.TelephonyUtilities": "Phone call audio",
+    ]
+
     public init() {}
+
     public func resolve(pid: pid_t, bundleID: String) -> ResolvedApp? {
+        if let friendly = RunningAppNameResolver.friendlyNames[bundleID] {
+            // Shown whatever its activation policy, because the user can hear it.
+            return ResolvedApp(name: friendly, isRegularApp: true)
+        }
+        return resolveRunningApplication(pid: pid, bundleID: bundleID)
+    }
+
+    private func resolveRunningApplication(pid: pid_t, bundleID: String) -> ResolvedApp? {
         guard let application = NSRunningApplication(processIdentifier: pid),
               let name = application.localizedName else { return nil }
         return ResolvedApp(name: name, isRegularApp: application.activationPolicy == .regular)
