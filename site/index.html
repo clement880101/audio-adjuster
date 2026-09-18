@@ -193,7 +193,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
     <span>Audio&nbsp;Adjuster</span>
     <nav>
       <a href="#how">How</a>
-      <a href="#measured">Measured</a>
+      <a href="#controls">Controls</a>
       <a href="#install">Install</a>
       <a href="https://github.com/clement880101/audio-adjuster-mac">GitHub</a>
     </nav>
@@ -262,41 +262,35 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
     </div>
   </section>
 
-  <section id="measured">
-    <div class="sec-head">Measured, not assumed</div>
-    <h2>What ducking actually&nbsp;<em>does</em>.</h2>
-    <p class="lede" style="max-width:60ch">
-      Taken on a live FaceTime call, against a test tone whose un-ducked peak is 0.0275.
-      This is not a feature — it is the arithmetic that makes a call's volume bar work.
-    </p>
-    <div class="readout">
-      <table>
-        <thead><tr><th>Measurement</th><th style="text-align:right">Peak</th></tr></thead>
-        <tbody>
-          <tr><td class="lab">Test tone, no call</td><td class="num">0.0275</td></tr>
-          <tr><td class="lab">Captured via unmuted tap, during call</td><td class="num">0.0009</td></tr>
-          <tr class="hi"><td class="lab">Captured via muted tap, during call</td><td class="num">0.0275</td></tr>
-          <tr><td class="lab">Our own output, observed back</td><td class="num">×0.0334</td></tr>
-          <tr class="hi"><td class="lab">Compensated, servo settled</td><td class="num">0.0275</td></tr>
-        </tbody>
-      </table>
+  <section id="controls">
+    <div class="sec-head">The controls</div>
+    <h2>One bar per app.&nbsp;<em>That</em> is the whole thing.</h2>
+    <div class="cols" style="margin-top:44px">
+      <div class="col">
+        <h3>0 to 1000%</h3>
+        <p>100% sits at the midpoint. Below it the scale is linear, so cuts are
+        proportional and reach exact silence. Above it logarithmic, so every equal drag is
+        an equal multiplication rather than a sliver of useful range and a long useless
+        tail.</p>
+      </div>
+      <div class="col">
+        <h3>Linked, or not</h3>
+        <p>By default, turning one app up turns the others down by the same total, so the
+        mix keeps a constant sum. Switch it off and each bar moves alone. Mute is never
+        linked either way — it stays the way to silence one app and nothing else.</p>
+      </div>
+      <div class="col">
+        <h3>Only what you hear</h3>
+        <p>Apps that have actually made a sound, and they keep their place once they fall
+        quiet, so a volume is still reachable between tracks. An app's several audio
+        processes collapse into one bar. System chimes never appear.</p>
+      </div>
     </div>
-    <p class="note">
-      A muted tap captures audio <em>before</em> ducking; our own output is then ducked in
-      turn. So the duck is a linear attenuation of about 0.033, and inverting it restores
-      the original level exactly. The app measures that ratio live rather than assuming it.
-    </p>
-    <p class="note">
-      <strong style="color:var(--text)">To be clear about what this is not:</strong> the app
-      does not stop macOS quietening your music during a call. Compensation is applied only
-      to the call's own channel. Without it, dragging the call's bar would make the call
-      drastically quieter rather than louder — so this is what stops that control doing
-      harm, not a way to defeat ducking.
-    </p>
-    <p class="note">
-      Compensation reaches about 30×, so a call ending at the wrong moment would be 30× too
-      loud. The servo rises gradually, falls in a single step, is hard-capped, and applies
-      only while a call is actually producing audio.
+    <p class="note" style="margin-top:36px">
+      Claims about audio in this project are measured rather than assumed — the ducking
+      figures, the gain linearity, the compensation convergence. They live in the
+      <a href="https://github.com/clement880101/audio-adjuster-mac#call-audio">README</a>
+      with the numbers attached.
     </p>
   </section>
 
