@@ -15,6 +15,10 @@ APP     := AudioAdjuster
 BUNDLE  := build/$(APP).app
 CONFIG  := release
 
+## Version stamped into the bundle. The release workflow passes the tag, so a published
+## build cannot disagree with the release it came from — it did once, silently.
+VERSION ?= $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist)
+
 .PHONY: test build app clean run probe
 
 test:
@@ -30,6 +34,8 @@ app: build
 	mkdir -p $(BUNDLE)/Contents/MacOS $(BUNDLE)/Contents/Resources
 	cp .build/$(CONFIG)/AudioAdjusterApp $(BUNDLE)/Contents/MacOS/$(APP)
 	cp Resources/Info.plist $(BUNDLE)/Contents/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(BUNDLE)/Contents/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(VERSION)" $(BUNDLE)/Contents/Info.plist
 	# Ad-hoc signature: no Developer ID is available, so macOS will re-prompt for the
 	# audio-capture permission whenever the code hash changes.
 	codesign --force --sign - \

@@ -28,7 +28,11 @@ jobs:
           make test
 
       - name: Package
-        run: make dist
+        # Stamp the tag into the bundle so the app cannot report a different version
+        # from the release it was published under.
+        run: make dist VERSION="${TAG#v}"
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
 
       - name: Publish release
         env:
