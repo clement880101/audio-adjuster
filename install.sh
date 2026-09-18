@@ -1,14 +1,14 @@
 #!/bin/sh
 # Installs the latest Audio Adjuster release into /Applications.
 #
-#   curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster-mac/main/install.sh | sh
 #
 # Downloads the release asset, checks it, and installs it. It will tell you exactly what
 # it is about to do with Gatekeeper and ask first.
 
 set -eu
 
-REPO="clement880101/audio-adjuster"
+REPO="clement880101/audio-adjuster-mac"
 APP="AudioAdjuster.app"
 DEST="/Applications"
 ASSET="AudioAdjuster-macos.zip"

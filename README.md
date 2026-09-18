@@ -1,23 +1,23 @@
 # Audio Adjuster
 
-[![CI](https://github.com/clement880101/audio-adjuster/actions/workflows/ci.yml/badge.svg)](https://github.com/clement880101/audio-adjuster/actions/workflows/ci.yml)
+[![CI](https://github.com/clement880101/audio-adjuster-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/clement880101/audio-adjuster-mac/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-14.2%2B-lightgrey.svg)](#requirements)
 
 Per-app volume control for macOS. A menu bar slider for every application that is making
 noise, built on Core Audio process taps.
 
-**<https://clement880101.github.io/audio-adjuster>**
+**<https://clement880101.github.io/audio-adjuster-mac>**
 
 Menu bar only — no Dock icon, no window.
 
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster-mac/main/install.sh | sh
 ```
 
-Or download the latest [release](https://github.com/clement880101/audio-adjuster/releases/latest)
+Or download the latest [release](https://github.com/clement880101/audio-adjuster-mac/releases/latest)
 and move the app into /Applications.
 
 On first use macOS asks for audio-recording permission. Process taps are gated behind it —

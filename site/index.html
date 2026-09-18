@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Audio Adjuster — per-app volume for macOS</title>
 <meta name="description" content="Audio Adjuster is a free, open-source macOS menu bar app that gives every application its own volume slider, built on Core Audio process taps. Per-app volume control for macOS 14.2 and later.">
-<link rel="canonical" href="https://clement880101.github.io/audio-adjuster/">
+<link rel="canonical" href="https://clement880101.github.io/audio-adjuster-mac/">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="author" content="Clement Chang">
 <meta name="keywords" content="macOS per-app volume, per application volume control mac, macOS volume mixer, Core Audio process tap, menu bar volume app, mac audio ducking">
@@ -14,8 +14,8 @@
 <meta property="og:title" content="Audio Adjuster — per-app volume for macOS">
 <meta property="og:description" content="A macOS menu bar app that gives every application its own volume slider, built on Core Audio process taps. Free and open source.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://clement880101.github.io/audio-adjuster/">
-<meta property="og:image" content="https://clement880101.github.io/audio-adjuster/og.png">
+<meta property="og:url" content="https://clement880101.github.io/audio-adjuster-mac/">
+<meta property="og:image" content="https://clement880101.github.io/audio-adjuster-mac/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Audio Adjuster: every app gets its own volume, shown as a stack of level bars.">
@@ -24,7 +24,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Audio Adjuster — per-app volume for macOS">
 <meta name="twitter:description" content="A macOS menu bar app that gives every application its own volume slider, built on Core Audio process taps.">
-<meta name="twitter:image" content="https://clement880101.github.io/audio-adjuster/og.png">
+<meta name="twitter:image" content="https://clement880101.github.io/audio-adjuster-mac/og.png">
 
 <script type="application/ld+json">
 {
@@ -35,15 +35,15 @@
   "applicationSubCategory": "Audio",
   "operatingSystem": "macOS 14.2 or later",
   "description": "A macOS menu bar app that gives every application its own volume slider, built on Core Audio process taps.",
-  "url": "https://clement880101.github.io/audio-adjuster/",
-  "downloadUrl": "https://github.com/clement880101/audio-adjuster/releases/latest",
+  "url": "https://clement880101.github.io/audio-adjuster-mac/",
+  "downloadUrl": "https://github.com/clement880101/audio-adjuster-mac/releases/latest",
   "softwareVersion": "0.1.0",
   "license": "https://www.apache.org/licenses/LICENSE-2.0",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "image": "https://clement880101.github.io/audio-adjuster/og.png",
+  "image": "https://clement880101.github.io/audio-adjuster-mac/og.png",
   "author": { "@type": "Person", "name": "Clement Chang" },
-  "codeRepository": "https://github.com/clement880101/audio-adjuster"
+  "codeRepository": "https://github.com/clement880101/audio-adjuster-mac"
 }
 </script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎚️</text></svg>">
@@ -194,7 +194,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
       <a href="#how">How</a>
       <a href="#measured">Measured</a>
       <a href="#install">Install</a>
-      <a href="https://github.com/clement880101/audio-adjuster">GitHub</a>
+      <a href="https://github.com/clement880101/audio-adjuster-mac">GitHub</a>
     </nav>
   </header>
 
@@ -208,11 +208,11 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
         <strong>Core Audio process taps</strong>.
       </p>
       <div class="cmd rise" style="animation-delay:.26s">
-        <code id="cmd"><span class="sig">$</span> curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster/main/install.sh | sh</code>
+        <code id="cmd"><span class="sig">$</span> curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster-mac/main/install.sh | sh</code>
         <button id="copy" aria-label="Copy install command">Copy</button>
       </div>
       <p class="alt rise" style="animation-delay:.32s">
-        or <a href="https://github.com/clement880101/audio-adjuster/releases/latest">download the latest release</a>
+        or <a href="https://github.com/clement880101/audio-adjuster-mac/releases/latest">download the latest release</a>
       </p>
     </div>
 
@@ -306,10 +306,10 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
       <div>
         <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)">From a release</h3>
         <pre>curl -fsSL https://raw.githubusercontent.com\
-/clement880101/audio-adjuster/main/install.sh | sh</pre>
+/clement880101/audio-adjuster-mac/main/install.sh | sh</pre>
         <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:30px 0 12px;padding-top:14px;border-top:1px solid var(--line)">From source</h3>
-        <pre>git clone https://github.com/clement880101/audio-adjuster
-cd audio-adjuster
+        <pre>git clone https://github.com/clement880101/audio-adjuster-mac
+cd audio-adjuster-mac
 make app &amp;&amp; make run</pre>
       </div>
       <div>
@@ -333,7 +333,7 @@ make app &amp;&amp; make run</pre>
 
   <footer>
     <span>Apache&nbsp;2.0 · © 2026 Clement Chang</span>
-    <span><a href="https://github.com/clement880101/audio-adjuster">github.com/clement880101/audio-adjuster</a></span>
+    <span><a href="https://github.com/clement880101/audio-adjuster-mac">github.com/clement880101/audio-adjuster-mac</a></span>
   </footer>
 </div>
 
