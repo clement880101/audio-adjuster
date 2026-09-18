@@ -70,12 +70,17 @@ public final class SettingsStore {
     private enum Key {
         static let apps = "apps"
         static let callAudio = "callAudio"
+        static let linkVolumes = "linkVolumes"
     }
 
     private let backend: SettingsBackend
     private var apps: [String: AppGainSetting]
 
     public var callAudio: CallAudioSettings { didSet { persistCallAudio() } }
+
+    /// When on, raising one app lowers the others by the same total, keeping the mix at a
+    /// constant sum. When off, each bar moves on its own.
+    public var isLinked: Bool { didSet { persistLinked() } }
 
     public init(backend: SettingsBackend = UserDefaults.standard) {
         self.backend = backend
@@ -84,6 +89,8 @@ public final class SettingsStore {
             .flatMap { try? decoder.decode([String: AppGainSetting].self, from: $0) } ?? [:]
         self.callAudio = backend.loadData(forKey: Key.callAudio)
             .flatMap { try? decoder.decode(CallAudioSettings.self, from: $0) } ?? .default
+        self.isLinked = backend.loadData(forKey: Key.linkVolumes)
+            .flatMap { try? decoder.decode(Bool.self, from: $0) } ?? true
     }
 
     public func setting(for bundleID: String) -> AppGainSetting {
@@ -158,6 +165,10 @@ public final class SettingsStore {
 
     private func persistApps() {
         backend.saveData(try? JSONEncoder().encode(apps), forKey: Key.apps)
+    }
+
+    private func persistLinked() {
+        backend.saveData(try? JSONEncoder().encode(isLinked), forKey: Key.linkVolumes)
     }
 
     private func persistCallAudio() {

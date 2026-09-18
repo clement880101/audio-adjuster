@@ -67,6 +67,16 @@ struct SettingsStoreTests {
     }
 
 
+    @Test("volumes are linked by default, and the choice is remembered")
+    func linkedByDefault() {
+        let backend = InMemorySettingsBackend()
+        #expect(SettingsStore(backend: backend).isLinked)
+
+        let first = SettingsStore(backend: backend)
+        first.isLinked = false
+        #expect(SettingsStore(backend: backend).isLinked == false)
+    }
+
     @Test("gain stays within the supported range")
     func gainStaysClamped() {
         let (store, _) = makeStore()

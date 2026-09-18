@@ -53,7 +53,7 @@ struct MenuBarContentView: View {
     private var header: some View {
         HStack(spacing: 6) {
             Text("Volume").font(.headline)
-            if model.processes.count > 1 {
+            if model.isLinked, model.processes.count > 1 {
                 Text(String(format: "total %.0f%%", model.balanceTotal * 100))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
@@ -72,14 +72,28 @@ struct MenuBarContentView: View {
     }
 
     private var footer: some View {
-        HStack {
-            Text("Drag a bar to set volume")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-            Spacer()
-            Button("Quit") { NSApp.terminate(nil) }
-                .buttonStyle(.link)
-                .font(.caption)
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: $model.isLinked) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Link volumes")
+                    Text(model.isLinked
+                         ? "Raising one app lowers the others"
+                         : "Each app moves on its own")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch)
+
+            HStack {
+                Text("Drag a bar to set volume · double click to mute")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+                Button("Quit") { NSApp.terminate(nil) }
+                    .buttonStyle(.link)
+                    .font(.caption)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

@@ -38,6 +38,14 @@ final class AppModel: ObservableObject {
 
     /// True while a call is in progress. Call rows are duck-compensated then.
     @Published private(set) var isCallActive = false
+
+    /// When on, raising one app lowers the others; when off, bars move independently.
+    @Published var isLinked: Bool {
+        didSet {
+            guard isLinked != settings.isLinked else { return }
+            settings.isLinked = isLinked
+        }
+    }
     private var processListListener: AudioObjectPropertyListenerBlock?
     private var outputDeviceListener: AudioObjectPropertyListenerBlock?
 
@@ -45,6 +53,7 @@ final class AppModel: ObservableObject {
         let settings = SettingsStore()
         self.settings = settings
         self.coordinator = ChannelCoordinator(settings: settings)
+        self.isLinked = settings.isLinked
 
         coordinator.onError = { [weak self] bundleID, error in
             Task { @MainActor in self?.failures[bundleID] = "\(error)" }
@@ -102,13 +111,15 @@ final class AppModel: ObservableObject {
     func failure(for bundleID: String) -> String? { failures[bundleID] }
 
     func setGain(_ gain: Float, for bundleID: String) {
-        // Sliders are linked: the volume one app gains, the others give up. Call engines
-        // are excluded because they can never be tapped, so they cannot give or take.
-        // Mute is deliberately not balanced - it is the way to silence one app alone.
-        let participants = processes.map(\.bundleID)
-        var current: [String: Float] = [:]
-        for id in participants { current[id] = settings.setting(for: id).gain }
-        settings.setGains(Balance.apply(gains: current, changed: bundleID, newGain: gain))
+        if isLinked {
+            // The volume one app gains, the others give up. Mute is deliberately never
+            // balanced — it stays the way to silence one app without moving anything else.
+            var current: [String: Float] = [:]
+            for id in processes.map(\.bundleID) { current[id] = settings.setting(for: id).gain }
+            settings.setGains(Balance.apply(gains: current, changed: bundleID, newGain: gain))
+        } else {
+            settings.setGain(gain, for: bundleID)
+        }
         failures.removeValue(forKey: bundleID)
         coordinator.reconcile()
         objectWillChange.send()
