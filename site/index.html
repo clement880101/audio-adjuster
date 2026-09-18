@@ -192,10 +192,9 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
   <header class="mast rise">
     <span>Audio&nbsp;Adjuster</span>
     <nav>
-      <a href="#why">Why</a>
-      <a href="#how">How</a>
-      <a href="#controls">Controls</a>
       <a href="#install">Install</a>
+      <a href="#what">What</a>
+      <a href="#how">How</a>
       <a href="https://github.com/clement880101/audio-adjuster-mac">GitHub</a>
     </nav>
   </header>
@@ -206,8 +205,8 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
       <h1 class="rise" style="animation-delay:.1s">macOS still has&nbsp;<em>one</em> volume knob.</h1>
       <p class="lede rise" style="animation-delay:.18s">
         Windows has had a per-app volume mixer since 2007. On a Mac, turning a video down
-        turns your music down with it. <strong>This is the mixer</strong> — one bar for
-        every app making noise, in the menu bar.
+        turns your music down with it. <strong>This fixes that</strong> — one bar for every
+        app making noise, in the menu bar. Free, open source, two minutes to install.
       </p>
       <div class="cmd rise" style="animation-delay:.26s">
         <code id="cmd"><span class="sig">$</span> curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster-mac/main/install.sh | sh</code>
@@ -235,66 +234,45 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
     </div>
   </div>
 
-  <section id="why">
-    <div class="sec-head">The obvious question</div>
-    <h2>So why doesn't macOS just&nbsp;<em>do</em> this?</h2>
-    <p class="lede" style="max-width:62ch">
-      Apple has never shipped a volume mixer, and for most of macOS's life it could not
-      have been built by anyone else either — there was no public way for one app to touch
-      another app's audio.
-    </p>
-    <div class="cols" style="margin-top:44px">
-      <div class="col">
-        <h3>Then, quietly, 14.2</h3>
-        <p>In December 2023 Apple added Core Audio <em>process taps</em>: a public API for
-        capturing one process's audio. Shipped for screen recording and system-audio
-        capture, not for volume.</p>
+  <section id="install">
+    <div class="sec-head">Install</div>
+    <h2>Two minutes, then&nbsp;<em>forget</em> it.</h2>
+    <div class="steps" style="margin-top:36px">
+      <div>
+        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)">From a release</h3>
+        <pre>curl -fsSL https://raw.githubusercontent.com\
+/clement880101/audio-adjuster-mac/main/install.sh | sh</pre>
+        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:30px 0 12px;padding-top:14px;border-top:1px solid var(--line)">From source</h3>
+        <pre>git clone https://github.com/clement880101/audio-adjuster-mac
+cd audio-adjuster-mac
+make app &amp;&amp; make run</pre>
       </div>
-      <div class="col">
-        <h3>The missing half</h3>
-        <p>A tap can also mute the app it captures. Capture it, mute the original, play it
-        back at a level you chose — and you have the per-app volume control Apple provided
-        every piece of but never assembled.</p>
-      </div>
-      <div class="col">
-        <h3>Which is all this is</h3>
-        <p>No kernel extension, no virtual audio driver to install, no patched system
-        files. Public API only, on macOS 14.2 and later. Delete it and your audio is
-        exactly as it was.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="how">
-    <div class="sec-head">How it works</div>
-    <h2>One tap per app you&nbsp;<em>touch</em>.</h2>
-    <p class="lede" style="max-width:60ch">
-      A private process tap captures an app's audio and mutes its normal path; our render
-      loop plays it back at the level you chose. Nothing else on the machine is affected.
-    </p>
-    <div class="cols" style="margin-top:44px">
-      <div class="col">
-        <h3>Opt in, per app</h3>
-        <p>A tap is created only for apps you actually adjust. Everything else keeps its
-        ordinary audio path, untouched and with no added latency.</p>
-      </div>
-      <div class="col">
-        <h3>Restores itself</h3>
-        <p>The tap mutes an app only while our render loop is reading it. Stopping is a
-        complete restore — there is no state left behind to repair.</p>
-      </div>
-      <div class="col">
-        <h3>Calls behave</h3>
-        <p>macOS quietens other audio during a call, and that still happens. But tapping
-        the call itself would cost it its own exemption, so that much is measured and
-        cancelled — enough for its bar to work.</p>
+      <div>
+        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)">Worth knowing</h3>
+        <p class="warn">
+          <b>It asks for audio-recording permission.</b> Process taps are gated behind it.
+          The app reads each app's audio in order to play it back at your level, and
+          records nothing — but without the grant a tap returns digital silence rather than
+          an error, which is a confusing way to fail.
+        </p>
+        <p class="warn" style="margin-top:20px">
+          <b>Ad-hoc signed, not notarized.</b> There is no Apple Developer ID behind this,
+          so macOS cannot verify who built it. Installed with the command on the left it
+          opens normally — files fetched by <code>curl</code> are not quarantined.
+          Downloaded through a browser it is, and macOS will refuse a double-click: open it
+          the first time with right-click&nbsp;→&nbsp;Open. Building from source sidesteps
+          the question.
+        </p>
       </div>
     </div>
   </section>
 
-  <section id="controls">
-    <div class="sec-head">The controls</div>
+  <section id="what">
+    <div class="sec-head">What it does</div>
     <h2>One bar per app.&nbsp;<em>That</em> is the whole thing.</h2>
+    <p class="lede" style="max-width:60ch">
+      It lives in the menu bar. No Dock icon, no window, nothing to manage.
+    </p>
     <div class="cols" style="margin-top:44px">
       <div class="col">
         <h3>0 to 1000%</h3>
@@ -316,45 +294,42 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
         processes collapse into one bar. System chimes never appear.</p>
       </div>
     </div>
-    <p class="note" style="margin-top:36px">
-      Claims about audio in this project are measured rather than assumed — the ducking
-      figures, the gain linearity, the compensation convergence. They live in the
-      <a href="https://github.com/clement880101/audio-adjuster-mac#call-audio">README</a>
-      with the numbers attached.
-    </p>
   </section>
 
-  <section id="install">
-    <div class="sec-head">Install</div>
-    <h2>Two minutes, then&nbsp;<em>forget</em> it.</h2>
-    <div class="steps" style="margin-top:36px">
-      <div>
-        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)">From a release</h3>
-        <pre>curl -fsSL https://raw.githubusercontent.com\
-/clement880101/audio-adjuster-mac/main/install.sh | sh</pre>
-        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:30px 0 12px;padding-top:14px;border-top:1px solid var(--line)">From source</h3>
-        <pre>git clone https://github.com/clement880101/audio-adjuster-mac
-cd audio-adjuster-mac
-make app &amp;&amp; make run</pre>
+  <section id="how">
+    <div class="sec-head">How it works</div>
+    <h2>Apple shipped every piece and never&nbsp;<em>assembled</em> them.</h2>
+    <p class="lede" style="max-width:62ch">
+      For most of macOS's life this could not have been built by anyone. There was no
+      public way for one app to touch another app's audio — which is a large part of why
+      no mixer exists.
+    </p>
+    <div class="cols" style="margin-top:44px">
+      <div class="col">
+        <h3>Then, quietly, 14.2</h3>
+        <p>In December 2023 Apple added Core Audio <em>process taps</em>: a public API for
+        capturing one process's audio. Shipped for screen recording and system-audio
+        capture, not for volume.</p>
       </div>
-      <div>
-        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)">Worth knowing</h3>
-        <p class="warn">
-          <b>It asks for audio-recording permission.</b> Process taps are gated behind it.
-          The app reads each app's audio in order to play it back at your level, and
-          records nothing — but grant it and a tap returns digital silence rather than an
-          error, which is a confusing way to fail.
-        </p>
-        <p class="warn" style="margin-top:20px">
-          <b>The build is ad-hoc signed, not notarized.</b> The project has no Apple
-          Developer ID, so macOS cannot verify who built it. Installed with the command on
-          the left it opens normally — files fetched by <code>curl</code> are not
-          quarantined. Downloaded through a browser it is, and macOS will refuse a
-          double-click: open it the first time with right-click&nbsp;→&nbsp;Open, read the
-          warning, and decide for yourself. Building from source sidesteps the question.
-        </p>
+      <div class="col">
+        <h3>The missing half</h3>
+        <p>A tap can also mute the app it captures. Capture it, mute the original, play it
+        back at a level you chose — and the control Apple never built exists, out of parts
+        Apple did.</p>
+      </div>
+      <div class="col">
+        <h3>Opt in, per app</h3>
+        <p>A tap is made only for an app you actually adjust. Everything else keeps its
+        ordinary path, with no added latency. The tap mutes only while our loop is reading,
+        so stopping is a complete restore.</p>
       </div>
     </div>
+    <p class="note" style="margin-top:36px">
+      No kernel extension, no virtual audio driver to install, no patched system files.
+      Public API only, macOS 14.2 and later. Delete it and your audio is exactly as it was.
+      Claims about audio here are measured rather than assumed — the numbers are in the
+      <a href="https://github.com/clement880101/audio-adjuster-mac#call-audio">README</a>.
+    </p>
   </section>
 
   <footer>
