@@ -140,11 +140,6 @@ public final class RunningAppNameResolver: AppNameResolver {
     private static let friendlyNames = [
         "com.apple.avconferenced": "FaceTime call audio",
         "com.apple.TelephonyUtilities": "Phone call audio",
-        // Plays the chime when a power adapter is connected.
-        "com.apple.PowerChime": "Power adapter chime",
-        // Renders AudioServicesPlaySystemSound for every app, so alert and notification
-        // sounds arrive here rather than attributed to whichever app asked for them.
-        "systemsoundserverd": "System alerts & UI sounds",
     ]
 
     public init() {}

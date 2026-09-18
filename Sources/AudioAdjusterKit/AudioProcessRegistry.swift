@@ -38,7 +38,9 @@ public final class AudioProcessRegistry {
         let raw = source.rawProcesses()
         for entry in raw where entry.isRunningOutput {
             guard let bundleID = entry.bundleID, !bundleID.isEmpty else { continue }
-            hasEverPlayed.insert(ProcessGroup.canonicalID(for: bundleID))
+            let canonicalID = ProcessGroup.canonicalID(for: bundleID)
+            guard !ProcessGroup.isHidden(canonicalID) else { continue }
+            hasEverPlayed.insert(canonicalID)
         }
         let updated = AudioProcessRegistry.assemble(
             raw: raw,
@@ -80,6 +82,9 @@ public final class AudioProcessRegistry {
             guard entry.pid != ownPID else { continue }
 
             let canonicalID = ProcessGroup.canonicalID(for: bundleID)
+            // System sound plumbing is never listed, however loud it gets.
+            guard !ProcessGroup.isHidden(canonicalID) else { continue }
+
             var group = groups[canonicalID] ?? Group()
             group.objectIDs.append(entry.objectID)
             group.isPlaying = group.isPlaying || entry.isRunningOutput

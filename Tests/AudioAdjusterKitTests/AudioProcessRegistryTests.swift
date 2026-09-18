@@ -68,11 +68,39 @@ struct AudioProcessRegistryTests {
     func showsAnythingAudible() {
         // If the user can hear it they should be able to turn it down, app or daemon.
         let result = AudioProcessRegistry.assemble(
-            raw: [raw(1, bundleID: "com.apple.PowerChime", isRunningOutput: true)],
+            raw: [raw(1, bundleID: "com.example.oddity", isRunningOutput: true)],
             excludingPID: 0,
-            names: FakeNames(["com.apple.PowerChime": "PowerChime"])
+            names: FakeNames(["com.example.oddity": "Oddity"])
         )
-        #expect(result.map(\.name) == ["PowerChime"])
+        #expect(result.map(\.name) == ["Oddity"])
+    }
+
+    @Test("system sound plumbing is never listed, however loud")
+    func hidesSystemSoundPlumbing() {
+        // PowerChime and systemsoundserverd appear the instant anything beeps and then sit
+        // in the list permanently, crowding out the entries worth adjusting.
+        let result = AudioProcessRegistry.assemble(
+            raw: [
+                raw(1, pid: 1, bundleID: "com.apple.PowerChime", isRunningOutput: true),
+                raw(2, pid: 2, bundleID: "systemsoundserverd", isRunningOutput: true),
+                raw(3, pid: 3, bundleID: "com.apple.Music", isRunningOutput: true),
+            ],
+            excludingPID: 0,
+            names: FakeNames(["com.apple.Music": "Music"])
+        )
+        #expect(result.map(\.bundleID) == ["com.apple.Music"])
+    }
+
+    @Test("a hidden process is not remembered either")
+    func hiddenProcessesAreNotRemembered() {
+        let source = FakeSource([raw(1, bundleID: "com.apple.PowerChime", isRunningOutput: true)])
+        let registry = AudioProcessRegistry(source: source, names: FakeNames(), ownPID: 0)
+        registry.refresh()
+        #expect(registry.processes.isEmpty)
+
+        source.raw = [raw(1, bundleID: "com.apple.PowerChime", isRunningOutput: false)]
+        registry.refresh()
+        #expect(registry.processes.isEmpty)
     }
 
     @Test("an app that has played is remembered once it falls silent")
