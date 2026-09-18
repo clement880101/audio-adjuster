@@ -341,7 +341,7 @@ make app &amp;&amp; make run</pre>
 <script>
 (function () {
   "use strict";
-  var MAX = 4, UNITY = 0.5;           // 400% range, 100% at the bar's midpoint
+  var MAX = 10, UNITY = 0.5;          // 1000% range, 100% at the bar's midpoint
   var apps = [
     { id: "music",  name: "Music",    tag: "M", gain: 1, playing: true },
     { id: "ff",     name: "Firefox",  tag: "F", gain: 1, playing: true },
@@ -349,14 +349,15 @@ make app &amp;&amp; make run</pre>
   ];
   var linked = true;
 
-  // Same non-linear mapping the app uses: half the bar below unity, half above.
+  // Same mapping the app uses: linear below unity so silence is reachable, logarithmic
+  // above it so each equal drag is an equal multiplication.
   function gainAt(p) {
     p = Math.min(Math.max(p, 0), 1);
-    return p <= UNITY ? p / UNITY : 1 + ((p - UNITY) / (1 - UNITY)) * (MAX - 1);
+    return p <= UNITY ? p / UNITY : Math.pow(MAX, (p - UNITY) / (1 - UNITY));
   }
   function positionFor(g) {
     g = Math.min(Math.max(g, 0), MAX);
-    return g <= 1 ? g * UNITY : UNITY + ((g - 1) / (MAX - 1)) * (1 - UNITY);
+    return g <= 1 ? g * UNITY : UNITY + (Math.log(g) / Math.log(MAX)) * (1 - UNITY);
   }
 
   // The balancing rule from Balance.swift: share the difference equally across the

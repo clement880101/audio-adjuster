@@ -83,14 +83,20 @@ keyed by bundle ID so there would be nothing stable to attach them to.
 
 ## Volume bars
 
-Each app gets one bar running from 0% to 400%, with **100% at the bar's midpoint**. The
-scale is deliberately non-linear: a linear bar would squeeze everyday adjustment — anything
-below normal volume — into the first quarter, where a pixel is worth several percent. Half
-the bar goes to the range people actually use, half to headroom.
+Each app gets one bar running from 0% to 1000%, with **100% at the bar's midpoint**. Two
+curves meet there:
+
+- **Below unity, linear.** Cutting volume is proportional, and has to reach exact silence —
+  which a logarithmic curve never does.
+- **Above unity, logarithmic.** A linear boost half would give 100–200%, the range anyone
+  actually reaches for, about five percent of the bar. Logarithmic spacing makes each equal
+  drag a roughly equal multiplication instead, so the midpoint of the boost half is
+  √10 ≈ 316% rather than 550%.
 
 Headroom is not a promise. Audio already near full scale cannot be made louder, and gain
-past that only drives the limiter. Most app audio sits well below full scale, which is
-where the range earns its keep.
+past that only drives the limiter — a source peaking at 0.05 has twenty times of genuine
+headroom, one peaking at 0.9 has almost none. Most app audio sits well below full scale,
+which is where the range earns its keep.
 
 Drag anywhere on a bar to set it; double click to mute.
 

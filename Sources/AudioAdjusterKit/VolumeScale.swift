@@ -2,10 +2,16 @@ import Foundation
 
 /// Maps a position along a volume bar to a gain.
 ///
-/// The mapping is deliberately not linear. With a range running to 400%, a linear bar
-/// would squeeze everyday adjustment — anything below normal volume — into the first
-/// quarter, where a pixel is worth several percent. Putting 100% at the midpoint gives
-/// half the bar to the range people actually use and half to headroom.
+/// Two different curves, meeting at 100% in the middle of the bar.
+///
+/// **Below unity, linear.** Cutting volume is proportional and has to reach exact silence,
+/// which a logarithmic curve never does.
+///
+/// **Above unity, logarithmic.** With a range running to 1000%, a linear boost half would
+/// give 100–200% — the range anyone actually reaches for — about five percent of the bar,
+/// while the top half wandered through gains nothing will survive. Logarithmic spacing
+/// makes each equal drag a roughly equal multiplication instead: the midpoint of the boost
+/// half is √10 ≈ 316%, not 550%.
 public enum VolumeScale {
 
     /// Fraction of the bar's width at which gain is exactly 100%.
@@ -18,7 +24,7 @@ public enum VolumeScale {
             return clamped / unityPosition
         }
         let above = (clamped - unityPosition) / (1 - unityPosition)
-        return 1 + above * (GainStage.maxGain - 1)
+        return pow(GainStage.maxGain, above)
     }
 
     /// Where a gain sits along the bar. Inverse of `gain(atPosition:)`.
@@ -27,7 +33,7 @@ public enum VolumeScale {
         if clamped <= 1 {
             return clamped * unityPosition
         }
-        let above = (clamped - 1) / (GainStage.maxGain - 1)
+        let above = log(clamped) / log(GainStage.maxGain)
         return unityPosition + above * (1 - unityPosition)
     }
 }

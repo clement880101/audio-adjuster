@@ -22,8 +22,9 @@ public struct GainStage {
     ///
     /// Useful headroom rather than a promise: audio already near full scale cannot be made
     /// louder, and pushing it only drives the limiter. Most app audio sits well below full
-    /// scale, which is where this range earns its keep.
-    public static let maxGain: Float = 4.0
+    /// scale, which is where this range earns its keep — a source peaking at 0.05 has
+    /// twenty times of genuine headroom, one peaking at 0.9 has almost none.
+    public static let maxGain: Float = 10.0
 
     /// Level above which soft clipping begins. Below it, output is bit-identical to input.
     static let clipThreshold: Float = 0.9

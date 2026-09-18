@@ -27,12 +27,31 @@ struct VolumeScaleTests {
         #expect(isClose(VolumeScale.gain(atPosition: 0.1), 0.2))
     }
 
-    @Test("the upper half spans unity to maximum")
-    func upperHalfIsHeadroom() {
+    @Test("the upper half is logarithmic, so equal drags multiply equally")
+    func upperHalfIsLogarithmic() {
+        // The midpoint of the boost half is the geometric mean, not the arithmetic one:
+        // for a 10x range that is sqrt(10) — about 316%, not 550%.
         let middle = VolumeScale.gain(atPosition: 0.75)
+        #expect(isClose(middle, GainStage.maxGain.squareRoot(), tolerance: 1e-3))
         #expect(middle > 1)
         #expect(middle < GainStage.maxGain)
-        #expect(isClose(middle, 1 + (GainStage.maxGain - 1) / 2))
+    }
+
+    @Test("equal steps above unity multiply by a constant factor")
+    func equalStepsMultiply() {
+        // What makes a long boost range usable: the same drag is worth the same
+        // proportional change wherever you do it.
+        let a = VolumeScale.gain(atPosition: 0.60)
+        let b = VolumeScale.gain(atPosition: 0.70)
+        let c = VolumeScale.gain(atPosition: 0.80)
+        #expect(isClose(b / a, c / b, tolerance: 1e-3))
+    }
+
+    @Test("the everyday boost range gets a usable share of the bar")
+    func boostRangeIsReachable() {
+        // A linear bar would give 100-200% about 5% of the width at this range.
+        let span = VolumeScale.position(forGain: 2) - VolumeScale.position(forGain: 1)
+        #expect(span > 0.12)
     }
 
     @Test("position and gain are inverses of each other")
