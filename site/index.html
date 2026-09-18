@@ -160,6 +160,8 @@ h2 em{font-style:italic;color:var(--accent)}
 .col h3{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.06em;
   text-transform:uppercase;color:var(--accent);margin:0 0 10px;padding-top:14px;border-top:1px solid var(--line)}
 .col p{margin:0;color:var(--dim);font-size:14.5px}
+.col p code{font-family:var(--mono);font-size:12.5px;color:var(--text);
+  background:rgba(255,255,255,.05);padding:1px 4px;border-radius:3px}
 
 /* ---------- measurement table ---------- */
 .readout{border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--panel);margin-top:8px}
@@ -303,37 +305,43 @@ make app &amp;&amp; make run</pre>
 
   <section id="how">
     <div class="sec-head">How it works</div>
-    <h2>Apple shipped every piece and never&nbsp;<em>assembled</em> them.</h2>
+    <h2>A tap, an aggregate device, and an&nbsp;<em>IO proc</em>.</h2>
     <p class="lede" style="max-width:62ch">
-      For most of macOS's life this could not have been built by anyone. There was no
-      public way for one app to touch another app's audio — which is a large part of why
-      no mixer exists.
+      macOS still has no per-app volume API. What it has, since 14.2, is Core Audio
+      <em>process taps</em> — shipped in December 2023 for screen recording and system-audio
+      capture. A tap can also mute the process it captures, and that is the half that makes
+      a volume control possible.
     </p>
     <div class="cols" style="margin-top:44px">
       <div class="col">
-        <h3>Then, quietly, 14.2</h3>
-        <p>In December 2023 Apple added Core Audio <em>process taps</em>: a public API for
-        capturing one process's audio. Shipped for screen recording and system-audio
-        capture, not for volume.</p>
+        <h3>The tap</h3>
+        <p>A <code>CATapDescription</code> with <code>muteBehavior</code> set to
+        <code>mutedWhenTapped</code>, marked private so nothing else can latch onto it. The
+        app plays normally until our render loop starts reading, and returns to normal the
+        instant it stops — so releasing the tap is a complete restore, with no state left
+        behind to repair.</p>
       </div>
       <div class="col">
-        <h3>The missing half</h3>
-        <p>A tap can also mute the app it captures. Capture it, mute the original, play it
-        back at a level you chose — and the control Apple never built exists, out of parts
-        Apple did.</p>
+        <h3>The device</h3>
+        <p>The tap is wrapped in a private aggregate device built on your current default
+        output, so it never shows up in Sound settings or Audio MIDI Setup. An aggregate is
+        bound to the device it was built on, so switching outputs — AirPods connecting —
+        invalidates every one of them and they are rebuilt.</p>
       </div>
       <div class="col">
-        <h3>Opt in, per app</h3>
-        <p>A tap is made only for an app you actually adjust. Everything else keeps its
-        ordinary path, with no added latency. The tap mutes only while our loop is reading,
-        so stopping is a complete restore.</p>
+        <h3>The render loop</h3>
+        <p>An IO proc copies tapped frames to the output with gain applied. It runs on the
+        Core Audio IO thread, so it allocates nothing, takes no locks and touches no
+        reference-counted object; the gain lives in preallocated memory that the UI writes
+        and the audio thread reads.</p>
       </div>
     </div>
     <p class="note" style="margin-top:36px">
-      No kernel extension, no virtual audio driver to install, no patched system files.
-      Public API only, macOS 14.2 and later. Delete it and your audio is exactly as it was.
-      Claims about audio here are measured rather than assumed — the numbers are in the
-      <a href="https://github.com/clement880101/audio-adjuster-mac#call-audio">README</a>.
+      A tap is created only for an app you actually adjust — everything else keeps its
+      ordinary path, with no added latency and no tap at all. There is no kernel extension,
+      no virtual audio driver to install and nothing patched: public API only, macOS 14.2
+      and later. Claims about audio here are measured rather than assumed, and the numbers
+      are in the <a href="https://github.com/clement880101/audio-adjuster-mac#call-audio">README</a>.
     </p>
   </section>
 
