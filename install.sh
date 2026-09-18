@@ -55,38 +55,41 @@ say "Installed $DEST/$APP"
 
 # --- Gatekeeper --------------------------------------------------------------------
 # The build is ad-hoc signed rather than notarized, because the project has no Apple
-# Developer ID. macOS therefore refuses to open it normally. Removing the quarantine
-# attribute is the documented way through that, but it is a real security decision and
-# is not made silently here.
-if [ -t 0 ] && [ -t 1 ]; then
+# Developer ID. What that means in practice depends on how the archive arrived: files
+# fetched by curl carry no quarantine attribute, so the app simply opens, while a zip
+# downloaded through a browser is quarantined and macOS will refuse it until you allow it.
+# Check rather than assume, so the advice matches the situation.
+if xattr -p com.apple.quarantine "$DEST/$APP" >/dev/null 2>&1; then
     cat <<'EXPLAIN'
 
 This build is ad-hoc signed, not notarized — the project has no Apple Developer ID,
-so macOS cannot verify who built it and will refuse to open it normally.
+so macOS cannot verify who built it, and this copy is quarantined.
 
 Two ways forward:
-  1. Leave it as is, and open the app the first time with right-click > Open,
-     which lets you read macOS's warning and decide for yourself.
+  1. Open it the first time with right-click > Open, which lets you read macOS's
+     warning and decide for yourself.
   2. Remove the quarantine flag now, which skips that prompt.
 
 Only choose 2 if you trust where this came from.
 EXPLAIN
-    printf 'Remove the quarantine flag? [y/N] '
-    read -r answer </dev/tty || answer=n
-    case "$answer" in
-        [Yy]*)
-            xattr -d -r com.apple.quarantine "$DEST/$APP" 2>/dev/null || true
-            say "Quarantine flag removed."
-            ;;
-        *)
-            say "Left in place. Open it the first time with right-click > Open."
-            ;;
-    esac
+    if [ -t 0 ] && [ -t 1 ]; then
+        printf 'Remove the quarantine flag? [y/N] '
+        read -r answer </dev/tty || answer=n
+        case "$answer" in
+            [Yy]*)
+                xattr -d -r com.apple.quarantine "$DEST/$APP" 2>/dev/null || true
+                say "Quarantine flag removed."
+                ;;
+            *) say "Left in place. Open it the first time with right-click > Open." ;;
+        esac
+    else
+        # Piped from curl, so there is no terminal to ask at. Never strip it silently.
+        say "Open it the first time with right-click > Open."
+    fi
 else
-    # Piped from curl, so there is no terminal to ask at. Never strip quarantine silently.
     say ""
-    say "This build is ad-hoc signed, not notarized. Open it the first time with"
-    say "right-click > Open so you can read macOS's warning and decide."
+    say "This build is ad-hoc signed rather than notarized, because the project has no"
+    say "Apple Developer ID. This copy is not quarantined, so it will open normally."
 fi
 
 say ""
