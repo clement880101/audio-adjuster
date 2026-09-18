@@ -37,7 +37,8 @@ public final class AudioProcessRegistry {
     public func refresh() {
         let raw = source.rawProcesses()
         for entry in raw where entry.isRunningOutput {
-            if let bundleID = entry.bundleID, !bundleID.isEmpty { hasEverPlayed.insert(bundleID) }
+            guard let bundleID = entry.bundleID, !bundleID.isEmpty else { continue }
+            hasEverPlayed.insert(ProcessGroup.canonicalID(for: bundleID))
         }
         let updated = AudioProcessRegistry.assemble(
             raw: raw,
@@ -59,7 +60,17 @@ public final class AudioProcessRegistry {
         names: AppNameResolver,
         hasEverPlayed: Set<String> = []
     ) -> [AudioProcess] {
-        var byBundleID: [String: AudioProcess] = [:]
+
+        /// One app's processes, gathered before deciding whether to show it. Grouping has
+        /// to come first: filtering per process would drop a silent FaceTime before it
+        /// could contribute its name and its process object to the audible call.
+        struct Group {
+            var objectIDs: [AudioObjectID] = []
+            var isPlaying = false
+            var namePID: pid_t?
+            var name: String?
+        }
+        var groups: [String: Group] = [:]
 
         for entry in raw {
             // Without a bundle ID there is nothing stable to key a setting to. This also
@@ -68,31 +79,41 @@ public final class AudioProcessRegistry {
             // Tapping ourselves would feed our own output back into our input.
             guard entry.pid != ownPID else { continue }
 
+            let canonicalID = ProcessGroup.canonicalID(for: bundleID)
+            var group = groups[canonicalID] ?? Group()
+            group.objectIDs.append(entry.objectID)
+            group.isPlaying = group.isPlaying || entry.isRunningOutput
+
+            // Prefer the app's own process for the name and icon: a helper would give a
+            // name like "avconferenced" and no icon.
+            let isTheAppItself = bundleID == canonicalID
+            if let resolvedName = names.displayName(pid: entry.pid, bundleID: bundleID),
+               group.name == nil || isTheAppItself {
+                group.name = resolvedName
+                group.namePID = entry.pid
+            }
+            if group.namePID == nil { group.namePID = entry.pid }
+
+            groups[canonicalID] = group
+        }
+
+        var byBundleID: [String: AudioProcess] = [:]
+        for (canonicalID, group) in groups {
             // Only things that actually make sound. Core Audio lists around thirty
             // processes, most of them daemons holding an audio client without ever being
             // audible, and listing those buries the handful that matter.
             //
             // Having made a sound earlier counts: an app keeps its place after it goes
             // quiet, so its volume stays adjustable between tracks or before it starts.
-            //
-            // `isRunning` is no help here — it means "has an audio client", not "is
-            // audible", and is 0 for an idle Music.
-            guard entry.isRunningOutput || hasEverPlayed.contains(bundleID) else { continue }
+            guard group.isPlaying || hasEverPlayed.contains(canonicalID) else { continue }
 
-            let process = AudioProcess(
-                objectID: entry.objectID,
-                pid: entry.pid,
-                bundleID: bundleID,
-                name: names.displayName(pid: entry.pid, bundleID: bundleID) ?? bundleID,
-                isPlaying: entry.isRunningOutput
+            byBundleID[canonicalID] = AudioProcess(
+                objectIDs: group.objectIDs.sorted(),
+                pid: group.namePID ?? 0,
+                bundleID: canonicalID,
+                name: group.name ?? ProcessGroup.name(forGroup: canonicalID) ?? canonicalID,
+                isPlaying: group.isPlaying
             )
-
-            // An app can own several audio process objects (helpers, plug-in hosts). Keep
-            // the one actually producing sound, since that is the one worth tapping.
-            if let existing = byBundleID[bundleID], existing.isPlaying, !process.isPlaying {
-                continue
-            }
-            byBundleID[bundleID] = process
         }
 
         // Apps actually making sound come first. The list runs to a dozen or more entries,

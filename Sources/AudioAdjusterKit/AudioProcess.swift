@@ -3,18 +3,22 @@ import Foundation
 
 /// An application that Core Audio knows about, as shown in the menu bar list.
 public struct AudioProcess: Identifiable, Equatable, Sendable {
-    public let objectID: AudioObjectID
+    /// Every Core Audio process object this entry covers. An app can render audio from
+    /// more than one process — a FaceTime call uses both FaceTime and avconferenced — and
+    /// a single tap can cover them all, so they stay one control.
+    public let objectIDs: [AudioObjectID]
+    /// The process used for the icon and name.
     public let pid: pid_t
     public let bundleID: String
     public let name: String
-    /// True when the app is currently sending audio to an output device.
+    /// True when any covered process is currently sending audio to an output device.
     public let isPlaying: Bool
 
     /// Settings are keyed by bundle ID so they survive the app relaunching under a new PID.
     public var id: String { bundleID }
 
-    public init(objectID: AudioObjectID, pid: pid_t, bundleID: String, name: String, isPlaying: Bool) {
-        self.objectID = objectID
+    public init(objectIDs: [AudioObjectID], pid: pid_t, bundleID: String, name: String, isPlaying: Bool) {
+        self.objectIDs = objectIDs
         self.pid = pid
         self.bundleID = bundleID
         self.name = name

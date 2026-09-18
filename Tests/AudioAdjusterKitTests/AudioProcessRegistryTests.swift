@@ -143,8 +143,8 @@ struct AudioProcessRegistryTests {
         #expect(result[0].isPlaying)
     }
 
-    @Test("duplicate bundle IDs collapse, preferring the instance making sound")
-    func dedupePrefersPlaying() {
+    @Test("several processes of one app become a single entry covering all of them")
+    func mergesProcessesOfOneApp() {
         let result = AudioProcessRegistry.assemble(
             raw: [
                 raw(1, pid: 10, bundleID: "app", isRunning: true, isRunningOutput: true),
@@ -155,11 +155,12 @@ struct AudioProcessRegistryTests {
         )
         #expect(result.count == 1)
         #expect(result[0].isPlaying)
-        #expect(result[0].objectID == 1)
+        // Both are tapped: leaving one out would let part of the app stay at full volume.
+        #expect(result[0].objectIDs == [1, 2])
     }
 
-    @Test("dedupe order does not matter")
-    func dedupeIsOrderIndependent() {
+    @Test("merge order does not matter")
+    func mergeIsOrderIndependent() {
         let result = AudioProcessRegistry.assemble(
             raw: [
                 raw(2, pid: 11, bundleID: "app", isRunning: true, isRunningOutput: false),
@@ -169,7 +170,8 @@ struct AudioProcessRegistryTests {
             names: FakeNames()
         )
         #expect(result.count == 1)
-        #expect(result[0].objectID == 1)
+        #expect(result[0].objectIDs == [1, 2])
+        #expect(result[0].isPlaying)
     }
 
     @Test("the bundle ID is used when no display name is available")
@@ -228,5 +230,73 @@ struct AudioProcessRegistryTests {
         registry.refresh()
         #expect(notifications == 2)
         #expect(registry.processes.map(\.bundleID) == ["a", "b"])
+    }
+}
+
+@Suite("Process grouping")
+struct ProcessGroupingTests {
+
+    @Test("FaceTime's two processes collapse into one entry")
+    func faceTimeIsOneEntry() {
+        // A call shows up as both FaceTime and avconferenced; two bars for one
+        // conversation is wrong, and a tap can cover both process objects at once.
+        let result = AudioProcessRegistry.assemble(
+            raw: [
+                raw(10, pid: 1, bundleID: "com.apple.FaceTime", isRunningOutput: false),
+                raw(11, pid: 2, bundleID: "com.apple.avconferenced", isRunningOutput: true),
+            ],
+            excludingPID: 0,
+            names: FakeNames(["com.apple.FaceTime": "FaceTime", "com.apple.avconferenced": "avconferenced"])
+        )
+        #expect(result.count == 1)
+        #expect(result[0].bundleID == "com.apple.FaceTime")
+        #expect(result[0].name == "FaceTime")
+        // Both processes must be tapped, or half the call stays at full volume.
+        #expect(result[0].objectIDs == [10, 11])
+    }
+
+    @Test("a group plays when any of its processes does")
+    func groupPlaysIfAnyMemberDoes() {
+        let result = AudioProcessRegistry.assemble(
+            raw: [
+                raw(10, pid: 1, bundleID: "com.apple.FaceTime", isRunningOutput: false),
+                raw(11, pid: 2, bundleID: "com.apple.avconferenced", isRunningOutput: true),
+            ],
+            excludingPID: 0,
+            names: FakeNames(["com.apple.FaceTime": "FaceTime"])
+        )
+        #expect(result[0].isPlaying)
+    }
+
+    @Test("a helper alone is named for the group, not the helper")
+    func helperAloneUsesGroupName() {
+        // During a call avconferenced can be audible while FaceTime itself is silent.
+        let result = AudioProcessRegistry.assemble(
+            raw: [raw(11, pid: 2, bundleID: "com.apple.avconferenced", isRunningOutput: true)],
+            excludingPID: 0,
+            names: FakeNames()
+        )
+        #expect(result.count == 1)
+        #expect(result[0].bundleID == "com.apple.FaceTime")
+        #expect(result[0].name == "FaceTime")
+    }
+
+    @Test("the settings key is the group, so one volume covers the call")
+    func groupSharesOneSetting() {
+        #expect(ProcessGroup.canonicalID(for: "com.apple.avconferenced") == "com.apple.FaceTime")
+        #expect(ProcessGroup.canonicalID(for: "com.apple.Music") == "com.apple.Music")
+    }
+
+    @Test("a remembered group stays listed after it falls silent")
+    func groupIsRemembered() {
+        let source = FakeSource([raw(11, pid: 2, bundleID: "com.apple.avconferenced", isRunningOutput: true)])
+        let registry = AudioProcessRegistry(source: source, names: FakeNames(), ownPID: 0)
+        registry.refresh()
+        #expect(registry.processes.map(\.bundleID) == ["com.apple.FaceTime"])
+
+        source.raw = [raw(11, pid: 2, bundleID: "com.apple.avconferenced", isRunningOutput: false)]
+        registry.refresh()
+        #expect(registry.processes.map(\.bundleID) == ["com.apple.FaceTime"])
+        #expect(registry.processes[0].isPlaying == false)
     }
 }

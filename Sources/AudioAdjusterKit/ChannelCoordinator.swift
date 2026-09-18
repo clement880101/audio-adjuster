@@ -264,7 +264,7 @@ public final class ChannelCoordinator {
         guard let process = processes.first(where: { $0.bundleID == bundleID }) else { return }
         let channel = AppAudioChannel(
             bundleID: bundleID,
-            processObjectID: process.objectID,
+            processObjectIDs: process.objectIDs,
             gain: settings.effectiveGain(for: bundleID)
         )
         do {

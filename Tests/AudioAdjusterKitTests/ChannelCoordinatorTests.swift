@@ -7,7 +7,7 @@ private let music = "com.apple.Music"
 private let faceTime = "com.apple.FaceTime"
 
 private func process(_ bundleID: String, playing: Bool = true, objectID: AudioObjectID = 1) -> AudioProcess {
-    AudioProcess(objectID: objectID, pid: 100, bundleID: bundleID, name: bundleID, isPlaying: playing)
+    AudioProcess(objectIDs: [objectID], pid: 100, bundleID: bundleID, name: bundleID, isPlaying: playing)
 }
 
 private func makeStore() -> SettingsStore {

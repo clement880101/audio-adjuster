@@ -437,7 +437,7 @@ case "--gain":
         exit(1)
     }
 
-    let channel = AppAudioChannel(bundleID: bundleID, processObjectID: process.objectID, gain: gain)
+    let channel = AppAudioChannel(bundleID: bundleID, processObjectIDs: process.objectIDs, gain: gain)
 
     // Restore the app's audio on Ctrl-C as well as on normal exit; leaving a tap running
     // would leave the app muted.

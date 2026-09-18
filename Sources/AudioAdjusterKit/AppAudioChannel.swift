@@ -77,7 +77,9 @@ public final class AppAudioChannel {
     }
 
     public let bundleID: String
-    private let processObjectID: AudioObjectID
+    /// Every process object this channel taps. An app can render audio from more than one
+    /// process, and one tap covering all of them keeps it a single control.
+    private let processObjectIDs: [AudioObjectID]
     private let options: TapOptions
     private let log = Logger(subsystem: "com.audioadjuster", category: "channel")
 
@@ -91,9 +93,13 @@ public final class AppAudioChannel {
 
     public var isAttached: Bool { tapID != AudioObjectID(kAudioObjectUnknown) }
 
-    public init(bundleID: String, processObjectID: AudioObjectID, gain: Float, options: TapOptions = .default) {
+    public convenience init(bundleID: String, processObjectID: AudioObjectID, gain: Float, options: TapOptions = .default) {
+        self.init(bundleID: bundleID, processObjectIDs: [processObjectID], gain: gain, options: options)
+    }
+
+    public init(bundleID: String, processObjectIDs: [AudioObjectID], gain: Float, options: TapOptions = .default) {
         self.bundleID = bundleID
-        self.processObjectID = processObjectID
+        self.processObjectIDs = processObjectIDs
         self.options = options
         self.state = UnsafeMutablePointer<IOState>.allocate(capacity: 1)
         // Start the ramp at the target so attaching does not fade in from silence.
@@ -194,7 +200,7 @@ public final class AppAudioChannel {
     // MARK: - Construction steps
 
     private func createTap() throws {
-        let description = CATapDescription(stereoMixdownOfProcesses: [processObjectID])
+        let description = CATapDescription(stereoMixdownOfProcesses: processObjectIDs)
         description.name = "AudioAdjuster-\(bundleID)"
         description.uuid = UUID()
         // Private: visible only to us, so nothing else can latch onto this app's audio.
