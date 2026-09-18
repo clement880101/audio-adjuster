@@ -1,7 +1,0 @@
-# Drives the Sponsor button on the repository page. It appears once a GitHub Sponsors
-# listing exists at https://github.com/sponsors/clement880101 — until then the button
-# links to a page that does not yet exist.
-#
-# GitHub charges nothing on sponsorships from personal accounts and covers the payment
-# processing too, so 100% reaches the developer.
-github: clement880101
