@@ -24,10 +24,16 @@ On first use macOS asks for audio-recording permission. Process taps are gated b
 the app reads each app's audio in order to play it back at your chosen volume, and records
 nothing.
 
-The build is **ad-hoc signed, not notarized**: the project has no Apple Developer ID, so
-macOS cannot verify who built it and will warn on first launch. Open it the first time
-with right-click → Open so you can read that warning and decide, or build from source and
-sidestep the question.
+The build is **ad-hoc signed, not notarized** — the project has no Apple Developer ID, so
+macOS cannot verify who built it. What that means depends on how you got it:
+
+- **Installed with the script above:** it opens normally. Files fetched by `curl` carry no
+  quarantine attribute, so Gatekeeper does not intervene.
+- **Downloaded through a browser:** the zip is quarantined and macOS will refuse to open
+  the app by double-click. Open it the first time with **right-click → Open**, which lets
+  you read the warning and decide for yourself.
+
+Building from source sidesteps the question entirely.
 
 ## Requirements
 

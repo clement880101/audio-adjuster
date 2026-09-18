@@ -317,10 +317,11 @@ make app &amp;&amp; make run</pre>
         </p>
         <p class="warn" style="margin-top:20px">
           <b>The build is ad-hoc signed, not notarized.</b> The project has no Apple
-          Developer ID, so macOS cannot verify who built it and will warn you on first
-          launch. Open it the first time with right-click&nbsp;→&nbsp;Open so you can read
-          that warning and decide for yourself. Or build it from source, which sidesteps
-          the question entirely.
+          Developer ID, so macOS cannot verify who built it. Installed with the command on
+          the left it opens normally — files fetched by <code>curl</code> are not
+          quarantined. Downloaded through a browser it is, and macOS will refuse a
+          double-click: open it the first time with right-click&nbsp;→&nbsp;Open, read the
+          warning, and decide for yourself. Building from source sidesteps the question.
         </p>
       </div>
     </div>

@@ -53,8 +53,10 @@ jobs:
           returns silence rather than an error.
 
           The build is ad-hoc signed, not notarized, because the project has no Apple
-          Developer ID. macOS will warn on first launch; see the README for what that
-          means and how to proceed.
+          Developer ID. Installed with the command above it opens normally, since files
+          fetched by curl are not quarantined. If you download the zip below through a
+          browser it is quarantined instead, and macOS will refuse a double-click — open
+          it the first time with right-click > Open.
 
           \`\`\`
           SHA-256  ${CHECKSUM}
