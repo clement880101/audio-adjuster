@@ -192,6 +192,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
   <header class="mast rise">
     <span>Audio&nbsp;Adjuster</span>
     <nav>
+      <a href="#why">Why</a>
       <a href="#how">How</a>
       <a href="#controls">Controls</a>
       <a href="#install">Install</a>
@@ -202,11 +203,11 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
   <div class="hero">
     <div>
       <div class="eyebrow rise" style="animation-delay:.05s">macOS 14.2+ · Apache 2.0</div>
-      <h1 class="rise" style="animation-delay:.1s">Every app gets its&nbsp;<em>own</em> volume.</h1>
+      <h1 class="rise" style="animation-delay:.1s">macOS still has&nbsp;<em>one</em> volume knob.</h1>
       <p class="lede rise" style="animation-delay:.18s">
-        macOS gives you one volume for everything. This gives you one per app —
-        a menu bar slider for whatever is making noise, built on
-        <strong>Core Audio process taps</strong>.
+        Windows has had a per-app volume mixer since 2007. On a Mac, turning a video down
+        turns your music down with it. <strong>This is the mixer</strong> — one bar for
+        every app making noise, in the menu bar.
       </p>
       <div class="cmd rise" style="animation-delay:.26s">
         <code id="cmd"><span class="sig">$</span> curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster-mac/main/install.sh | sh</code>
@@ -234,13 +235,42 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
     </div>
   </div>
 
+  <section id="why">
+    <div class="sec-head">The obvious question</div>
+    <h2>So why doesn't macOS just&nbsp;<em>do</em> this?</h2>
+    <p class="lede" style="max-width:62ch">
+      Apple has never shipped a volume mixer, and for most of macOS's life it could not
+      have been built by anyone else either — there was no public way for one app to touch
+      another app's audio.
+    </p>
+    <div class="cols" style="margin-top:44px">
+      <div class="col">
+        <h3>Then, quietly, 14.2</h3>
+        <p>In December 2023 Apple added Core Audio <em>process taps</em>: a public API for
+        capturing one process's audio. Shipped for screen recording and system-audio
+        capture, not for volume.</p>
+      </div>
+      <div class="col">
+        <h3>The missing half</h3>
+        <p>A tap can also mute the app it captures. Capture it, mute the original, play it
+        back at a level you chose — and you have the per-app volume control Apple provided
+        every piece of but never assembled.</p>
+      </div>
+      <div class="col">
+        <h3>Which is all this is</h3>
+        <p>No kernel extension, no virtual audio driver to install, no patched system
+        files. Public API only, on macOS 14.2 and later. Delete it and your audio is
+        exactly as it was.</p>
+      </div>
+    </div>
+  </section>
+
   <section id="how">
     <div class="sec-head">How it works</div>
-    <h2>No public API for this&nbsp;<em>exists</em>.</h2>
+    <h2>One tap per app you&nbsp;<em>touch</em>.</h2>
     <p class="lede" style="max-width:60ch">
-      So it is built from the one primitive that does: a private Core Audio process tap
-      that captures an app's audio and mutes its normal path, re-rendered at whatever
-      level you chose.
+      A private process tap captures an app's audio and mutes its normal path; our render
+      loop plays it back at the level you chose. Nothing else on the machine is affected.
     </p>
     <div class="cols" style="margin-top:44px">
       <div class="col">
