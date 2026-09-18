@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Core Audio process taps need macOS 14.2 or later, both to build and to run.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Test
+        run: make test
+
+      - name: Assemble app bundle
+        run: make dist
+
+      # Proves the bundle is well formed before anyone downloads it: a missing
+      # Info.plist or a broken signature only shows up at launch otherwise.
+      - name: Verify bundle
+        run: |
+          plutil -lint build/AudioAdjuster.app/Contents/Info.plist
+          codesign --verify --deep --strict --verbose=2 build/AudioAdjuster.app
+          test -x build/AudioAdjuster.app/Contents/MacOS/AudioAdjuster
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AudioAdjuster-macos
+          path: build/AudioAdjuster-macos.zip
+          if-no-files-found: error

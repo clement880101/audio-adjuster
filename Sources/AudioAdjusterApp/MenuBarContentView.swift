@@ -86,9 +86,6 @@ struct MenuBarContentView: View {
             .toggleStyle(.switch)
 
             HStack {
-                Text("Drag a bar to set volume · double click to mute")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }
                     .buttonStyle(.link)

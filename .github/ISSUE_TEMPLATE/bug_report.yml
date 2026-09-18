@@ -1,0 +1,44 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: if an app's volume bar does nothing, check that macOS has granted
+        audio-recording permission. Without it a process tap returns silence rather than
+        an error, which looks exactly like a broken slider.
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "output of: sw_vers -productVersion"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Audio Adjuster version
+      placeholder: "release tag, or the commit you built"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: apps
+    attributes:
+      label: Which apps were involved
+      description: Which app's audio, and whether a call was in progress at the time.
+  - type: textarea
+    id: log
+    attributes:
+      label: Debug log
+      description: |
+        Optional but very useful. Run `touch ~/Library/Logs/AudioAdjuster-debug.log`,
+        restart the app, reproduce, then paste the relevant lines.
+      render: text

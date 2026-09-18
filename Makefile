@@ -1,12 +1,15 @@
-# Command Line Tools ship swift-testing outside the default search paths, so tests need
-# these explicitly. (Xcode would supply them automatically.)
+# A Command Line Tools install ships swift-testing outside the default search paths, so
+# tests there need these flags spelled out. A full Xcode install supplies them itself, and
+# passing the CLT paths would then point at frameworks that are not present — so they are
+# added only when that CLT layout actually exists.
 CLT  := /Library/Developer/CommandLineTools
 FW   := $(CLT)/Library/Developer/Frameworks
 LIB  := $(CLT)/Library/Developer/usr/lib
-TESTFLAGS := -Xswiftc -F -Xswiftc $(FW) \
+TESTFLAGS := $(if $(wildcard $(FW)/Testing.framework),\
+             -Xswiftc -F -Xswiftc $(FW) \
              -Xlinker -F -Xlinker $(FW) \
              -Xlinker -rpath -Xlinker $(FW) \
-             -Xlinker -rpath -Xlinker $(LIB)
+             -Xlinker -rpath -Xlinker $(LIB),)
 
 APP     := AudioAdjuster
 BUNDLE  := build/$(APP).app
@@ -36,6 +39,14 @@ app: build
 
 run: app
 	open $(BUNDLE)
+
+## Zipped bundle for a release, alongside the checksum an installer verifies.
+DIST := build/AudioAdjuster-macos.zip
+dist: app
+	rm -f $(DIST)
+	ditto -c -k --keepParent $(BUNDLE) $(DIST)
+	shasum -a 256 $(DIST) | tee $(DIST).sha256
+	@echo "built $(DIST)"
 
 probe: build
 	@echo "run: .build/$(CONFIG)/AudioAdjusterProbe --list"

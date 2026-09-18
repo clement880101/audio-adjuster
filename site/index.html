@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audio Adjuster — per-app volume for macOS</title>
+<meta name="description" content="A macOS menu bar app that gives every application its own volume, built on Core Audio process taps.">
+<meta property="og:title" content="Audio Adjuster">
+<meta property="og:description" content="Per-app volume for macOS, built on Core Audio process taps.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎚️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0b0c0e; --panel:#131517; --panel-2:#181b1e; --line:#24282c;
+  --text:#e9e5dd; --dim:#8b9199; --dimmer:#5d646c;
+  --accent:#f2a33c; --accent-soft:rgba(242,163,60,.16); --accent-line:rgba(242,163,60,.4);
+  --serif:"Instrument Serif",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+/* Faint horizontal rules, like ruled paper on a spec sheet. */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:repeating-linear-gradient(to bottom,rgba(255,255,255,.017) 0 1px,transparent 1px 44px);
+}
+/* Grain, so the flat dark ground has some tooth to it. */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.28;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+}
+.wrap{position:relative;z-index:2;max-width:1060px;margin:0 auto;padding:0 28px}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-line)}
+a:hover{background:var(--accent-soft)}
+
+/* ---------- reveal ---------- */
+.rise{opacity:0;transform:translateY(14px);animation:rise .85s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.rise{animation:none;opacity:1;transform:none}}
+
+/* ---------- masthead ---------- */
+.mast{display:flex;justify-content:space-between;align-items:baseline;gap:20px;
+  padding:26px 0 0;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer)}
+.mast a{color:var(--dim);border:0}
+.mast a:hover{color:var(--accent);background:none}
+.mast nav{display:flex;gap:22px}
+
+/* ---------- hero ---------- */
+.hero{padding:72px 0 30px;display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:start}
+@media (max-width:900px){.hero{grid-template-columns:1fr;gap:38px;padding-top:48px}}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.eyebrow::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,var(--accent-line),transparent)}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(3.2rem,8vw,5.6rem);line-height:.94;
+  letter-spacing:-.02em;margin:0 0 20px}
+h1 em{font-style:italic;color:var(--accent)}
+.lede{font-size:1.16rem;color:var(--dim);max-width:46ch;margin:0 0 30px}
+.lede strong{color:var(--text);font-weight:500}
+
+.cmd{display:flex;align-items:center;gap:0;border:1px solid var(--line);background:var(--panel);
+  border-radius:3px;font-family:var(--mono);font-size:13px;overflow:hidden;max-width:520px}
+.cmd code{padding:13px 15px;overflow-x:auto;white-space:nowrap;flex:1;color:var(--text)}
+.cmd code .sig{color:var(--dimmer)}
+.cmd button{font:inherit;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;
+  background:transparent;color:var(--dim);border:0;border-left:1px solid var(--line);padding:13px 16px;transition:.18s}
+.cmd button:hover{color:var(--accent);background:var(--accent-soft)}
+.alt{margin-top:14px;font-family:var(--mono);font-size:12.5px;color:var(--dimmer)}
+
+/* ---------- demo popover ---------- */
+.demo{position:relative}
+.demo-label{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dimmer);margin-bottom:12px;display:flex;justify-content:space-between}
+.pop{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 26px 60px -20px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.03) inset;
+  font-family:var(--sans);font-size:13px;overflow:hidden;user-select:none}
+.pop-head{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--line)}
+.pop-head b{font-weight:500;font-size:13px}
+.pop-head .total{font-family:var(--mono);font-size:11px;color:var(--dimmer);margin-left:auto}
+.rows{padding:10px 11px;display:flex;flex-direction:column;gap:6px}
+.row{position:relative;height:32px;border-radius:7px;background:var(--panel-2);overflow:hidden;
+  cursor:ew-resize;touch-action:none}
+.fill{position:absolute;inset:0 auto 0 0;background:var(--accent);opacity:.55;
+  transition:width .06s linear}
+.row.idle .fill{opacity:.24}
+.tick{position:absolute;top:5px;bottom:5px;width:1px;background:rgba(255,255,255,.34);left:50%}
+.row-in{position:relative;display:flex;align-items:center;gap:8px;height:100%;padding:0 10px;
+  mix-blend-mode:normal}
+/* Text stays light whatever the fill is doing: the fill only reaches the midpoint at
+   100%, so a right-aligned percentage sits on the dark track, not on the amber. */
+.glyph{width:16px;height:16px;border-radius:4px;flex:none;display:grid;place-items:center;
+  font-size:9px;font-family:var(--mono);color:#0b0c0e;background:var(--text)}
+.row-name{color:var(--text);font-weight:500}
+.row .pct{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--dim);font-weight:500}
+.pop-foot{border-top:1px solid var(--line);padding:11px 13px;display:flex;align-items:center;gap:10px}
+.sw{width:32px;height:18px;border-radius:9px;background:var(--line);position:relative;flex:none;
+  cursor:pointer;transition:.2s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+  background:var(--dim);transition:.2s}
+.sw.on{background:var(--accent-soft)}
+.sw.on::after{transform:translateX(14px);background:var(--accent)}
+.sw-label{font-size:12px;color:var(--dim)}
+.hint{margin-top:13px;font-family:var(--mono);font-size:11.5px;color:var(--dimmer);text-align:center}
+
+/* ---------- sections ---------- */
+section{padding:80px 0;border-top:1px solid var(--line)}
+.sec-head{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--dimmer);margin-bottom:26px}
+h2{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,4.4vw,3rem);line-height:1.08;
+  letter-spacing:-.015em;margin:0 0 20px}
+h2 em{font-style:italic;color:var(--accent)}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:34px}
+@media (max-width:860px){.cols{grid-template-columns:1fr;gap:28px}}
+.col h3{font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+.col p{margin:0;color:var(--dim);font-size:14.5px}
+
+/* ---------- measurement table ---------- */
+.readout{border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--panel);margin-top:8px}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dimmer);font-weight:400}
+tr:last-child td{border-bottom:0}
+td.num{text-align:right;color:var(--accent);white-space:nowrap}
+td.lab{color:var(--dim)}
+tr.hi td{background:var(--accent-soft)}
+tr.hi td.lab{color:var(--text)}
+
+.note{margin-top:20px;padding-left:16px;border-left:2px solid var(--accent-line);color:var(--dim);font-size:14.5px;max-width:62ch}
+
+/* ---------- install ---------- */
+.steps{display:grid;grid-template-columns:1fr 1fr;gap:34px}
+@media (max-width:860px){.steps{grid-template-columns:1fr}}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:15px;
+  font-family:var(--mono);font-size:12.5px;overflow-x:auto;margin:0;color:var(--text)}
+.warn{font-size:14.5px;color:var(--dim);max-width:60ch}
+.warn b{color:var(--text);font-weight:500}
+
+footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mono);font-size:12px;
+  color:var(--dimmer);display:flex;gap:24px;flex-wrap:wrap;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast rise">
+    <span>Audio&nbsp;Adjuster</span>
+    <nav>
+      <a href="#how">How</a>
+      <a href="#measured">Measured</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/clement880101/audio-adjuster">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <div class="eyebrow rise" style="animation-delay:.05s">macOS 14.2+ · Apache 2.0</div>
+      <h1 class="rise" style="animation-delay:.1s">Every app gets its&nbsp;<em>own</em> volume.</h1>
+      <p class="lede rise" style="animation-delay:.18s">
+        macOS gives you one volume for everything. This gives you one per app —
+        a menu bar slider for whatever is making noise, built on
+        <strong>Core Audio process taps</strong>.
+      </p>
+      <div class="cmd rise" style="animation-delay:.26s">
+        <code id="cmd"><span class="sig">$</span> curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster/main/install.sh | sh</code>
+        <button id="copy" aria-label="Copy install command">Copy</button>
+      </div>
+      <p class="alt rise" style="animation-delay:.32s">
+        or <a href="https://github.com/clement880101/audio-adjuster/releases/latest">download the latest release</a>
+      </p>
+    </div>
+
+    <div class="demo rise" style="animation-delay:.38s">
+      <div class="demo-label"><span>Try it</span><span id="mode-note">linked</span></div>
+      <div class="pop">
+        <div class="pop-head">
+          <b>Volume</b>
+          <span class="total" id="total">total 300%</span>
+        </div>
+        <div class="rows" id="rows"></div>
+        <div class="pop-foot">
+          <div class="sw on" id="sw" role="switch" aria-checked="true" tabindex="0" aria-label="Link volumes"></div>
+          <span class="sw-label" id="sw-label">Raising one app lowers the others</span>
+        </div>
+      </div>
+      <p class="hint">Drag a bar. This is the real balancing algorithm.</p>
+    </div>
+  </div>
+
+  <section id="how">
+    <div class="sec-head">How it works</div>
+    <h2>No public API for this&nbsp;<em>exists</em>.</h2>
+    <p class="lede" style="max-width:60ch">
+      So it is built from the one primitive that does: a private Core Audio process tap
+      that captures an app's audio and mutes its normal path, re-rendered at whatever
+      level you chose.
+    </p>
+    <div class="cols" style="margin-top:44px">
+      <div class="col">
+        <h3>Opt in, per app</h3>
+        <p>A tap is created only for apps you actually adjust. Everything else keeps its
+        ordinary audio path, untouched and with no added latency.</p>
+      </div>
+      <div class="col">
+        <h3>Restores itself</h3>
+        <p>The tap mutes an app only while our render loop is reading it. Stopping is a
+        complete restore — there is no state left behind to repair.</p>
+      </div>
+      <div class="col">
+        <h3>Calls, handled</h3>
+        <p>macOS quietens everything during a call. Tapping the call would cost it that
+        exemption, so the duck is measured live and cancelled.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="measured">
+    <div class="sec-head">Measured, not assumed</div>
+    <h2>What ducking actually&nbsp;<em>does</em>.</h2>
+    <p class="lede" style="max-width:60ch">
+      Taken on a live FaceTime call, against a test tone whose un-ducked peak is 0.0275.
+    </p>
+    <div class="readout">
+      <table>
+        <thead><tr><th>Measurement</th><th style="text-align:right">Peak</th></tr></thead>
+        <tbody>
+          <tr><td class="lab">Test tone, no call</td><td class="num">0.0275</td></tr>
+          <tr><td class="lab">Captured via unmuted tap, during call</td><td class="num">0.0009</td></tr>
+          <tr class="hi"><td class="lab">Captured via muted tap, during call</td><td class="num">0.0275</td></tr>
+          <tr><td class="lab">Our own output, observed back</td><td class="num">×0.0334</td></tr>
+          <tr class="hi"><td class="lab">Compensated, servo settled</td><td class="num">0.0275</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      A muted tap captures audio <em>before</em> ducking; our own output is then ducked in
+      turn. So the duck is a linear attenuation of about 0.033, and inverting it restores
+      the original level exactly. The app measures that ratio live rather than assuming it.
+    </p>
+    <p class="note">
+      Compensation reaches about 30×, so a call ending at the wrong moment would be 30× too
+      loud. The servo rises gradually, falls in a single step, is hard-capped, and applies
+      only while a call is actually producing audio.
+    </p>
+  </section>
+
+  <section id="install">
+    <div class="sec-head">Install</div>
+    <h2>Two minutes, then&nbsp;<em>forget</em> it.</h2>
+    <div class="steps" style="margin-top:36px">
+      <div>
+        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)">From a release</h3>
+        <pre>curl -fsSL https://raw.githubusercontent.com\
+/clement880101/audio-adjuster/main/install.sh | sh</pre>
+        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:30px 0 12px;padding-top:14px;border-top:1px solid var(--line)">From source</h3>
+        <pre>git clone https://github.com/clement880101/audio-adjuster
+cd audio-adjuster
+make app &amp;&amp; make run</pre>
+      </div>
+      <div>
+        <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)">Worth knowing</h3>
+        <p class="warn">
+          <b>It asks for audio-recording permission.</b> Process taps are gated behind it.
+          The app reads each app's audio in order to play it back at your level, and
+          records nothing — but grant it and a tap returns digital silence rather than an
+          error, which is a confusing way to fail.
+        </p>
+        <p class="warn" style="margin-top:20px">
+          <b>The build is ad-hoc signed, not notarized.</b> The project has no Apple
+          Developer ID, so macOS cannot verify who built it and will warn you on first
+          launch. Open it the first time with right-click&nbsp;→&nbsp;Open so you can read
+          that warning and decide for yourself. Or build it from source, which sidesteps
+          the question entirely.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Apache&nbsp;2.0 · © 2026 Clement Chang</span>
+    <span><a href="https://github.com/clement880101/audio-adjuster">github.com/clement880101/audio-adjuster</a></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var MAX = 4, UNITY = 0.5;           // 400% range, 100% at the bar's midpoint
+  var apps = [
+    { id: "music",  name: "Music",    tag: "M", gain: 1, playing: true },
+    { id: "ff",     name: "Firefox",  tag: "F", gain: 1, playing: true },
+    { id: "ft",     name: "FaceTime", tag: "T", gain: 1, playing: false }
+  ];
+  var linked = true;
+
+  // Same non-linear mapping the app uses: half the bar below unity, half above.
+  function gainAt(p) {
+    p = Math.min(Math.max(p, 0), 1);
+    return p <= UNITY ? p / UNITY : 1 + ((p - UNITY) / (1 - UNITY)) * (MAX - 1);
+  }
+  function positionFor(g) {
+    g = Math.min(Math.max(g, 0), MAX);
+    return g <= 1 ? g * UNITY : UNITY + ((g - 1) / (MAX - 1)) * (1 - UNITY);
+  }
+
+  // The balancing rule from Balance.swift: share the difference equally across the
+  // others, and let anything that hits a limit pass its residual on.
+  function balance(changed, newGain) {
+    var previous = changed.gain;
+    changed.gain = Math.min(Math.max(newGain, 0), MAX);
+    var remaining = -(changed.gain - previous);
+    var eligible = apps.filter(function (a) { return a !== changed; });
+    for (var pass = 0; pass < 8 && Math.abs(remaining) > 1e-6 && eligible.length; pass++) {
+      var share = remaining / eligible.length, residual = 0, next = [];
+      eligible.forEach(function (a) {
+        var wanted = a.gain + share;
+        var clamped = Math.min(Math.max(wanted, 0), MAX);
+        residual += wanted - clamped;
+        a.gain = clamped;
+        if (clamped > 0 && clamped < MAX) next.push(a);
+      });
+      remaining = residual; eligible = next;
+    }
+  }
+
+  var rowsEl = document.getElementById("rows");
+  var totalEl = document.getElementById("total");
+  var nodes = {};
+
+  apps.forEach(function (app) {
+    var row = document.createElement("div");
+    row.className = "row" + (app.playing ? "" : " idle");
+    row.setAttribute("role", "slider");
+    row.setAttribute("aria-label", app.name + " volume");
+    row.tabIndex = 0;
+    row.innerHTML =
+      '<div class="fill"></div><div class="tick"></div>' +
+      '<div class="row-in"><span class="glyph">' + app.tag + "</span>" +
+      '<span class="row-name">' + app.name + "</span>" +
+      '<span class="pct"></span></div>';
+    rowsEl.appendChild(row);
+    nodes[app.id] = { row: row, fill: row.querySelector(".fill"), pct: row.querySelector(".pct") };
+
+    function setFromEvent(e) {
+      var box = row.getBoundingClientRect();
+      var x = (e.touches ? e.touches[0].clientX : e.clientX) - box.left;
+      var gain = gainAt(x / box.width);
+      if (linked) { balance(app, gain); } else { app.gain = Math.min(Math.max(gain, 0), MAX); }
+      render();
+    }
+    function up() {
+      window.removeEventListener("pointermove", setFromEvent);
+      window.removeEventListener("pointerup", up);
+    }
+    row.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      setFromEvent(e);
+      window.addEventListener("pointermove", setFromEvent);
+      window.addEventListener("pointerup", up);
+    });
+    row.addEventListener("keydown", function (e) {
+      var step = e.key === "ArrowRight" ? 0.05 : e.key === "ArrowLeft" ? -0.05 : 0;
+      if (!step) return;
+      e.preventDefault();
+      var target = gainAt(positionFor(app.gain) + step);
+      if (linked) { balance(app, target); } else { app.gain = target; }
+      render();
+    });
+  });
+
+  function render() {
+    var total = 0;
+    apps.forEach(function (app) {
+      var n = nodes[app.id];
+      n.fill.style.width = (positionFor(app.gain) * 100).toFixed(2) + "%";
+      n.pct.textContent = Math.round(app.gain * 100) + "%";
+      n.row.setAttribute("aria-valuenow", Math.round(app.gain * 100));
+      total += app.gain;
+    });
+    totalEl.textContent = "total " + Math.round(total * 100) + "%";
+    totalEl.style.visibility = linked ? "visible" : "hidden";
+  }
+
+  var sw = document.getElementById("sw");
+  var swLabel = document.getElementById("sw-label");
+  var modeNote = document.getElementById("mode-note");
+  function toggle() {
+    linked = !linked;
+    sw.classList.toggle("on", linked);
+    sw.setAttribute("aria-checked", String(linked));
+    swLabel.textContent = linked ? "Raising one app lowers the others" : "Each app moves on its own";
+    modeNote.textContent = linked ? "linked" : "independent";
+    render();
+  }
+  sw.addEventListener("click", toggle);
+  sw.addEventListener("keydown", function (e) {
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
+  });
+
+  render();
+
+  var copy = document.getElementById("copy");
+  copy.addEventListener("click", function () {
+    var text = document.getElementById("cmd").textContent.replace(/^\s*\$\s*/, "");
+    navigator.clipboard.writeText(text).then(function () {
+      copy.textContent = "Copied";
+      setTimeout(function () { copy.textContent = "Copy"; }, 1600);
+    });
+  });
+})();
+</script>
+</body>
+</html>

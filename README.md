@@ -1,29 +1,55 @@
 # Audio Adjuster
 
-Per-app volume control for macOS, plus a manual anti-duck switch for the volume drop
-macOS applies to other audio during FaceTime calls.
+[![CI](https://github.com/clement880101/audio-adjuster/actions/workflows/ci.yml/badge.svg)](https://github.com/clement880101/audio-adjuster/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-14.2%2B-lightgrey.svg)](#requirements)
+
+Per-app volume control for macOS. A menu bar slider for every application that is making
+noise, built on Core Audio process taps.
+
+**<https://clement880101.github.io/audio-adjuster>**
 
 Menu bar only — no Dock icon, no window.
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/clement880101/audio-adjuster/main/install.sh | sh
+```
+
+Or download the latest [release](https://github.com/clement880101/audio-adjuster/releases/latest)
+and move the app into /Applications.
+
+On first use macOS asks for audio-recording permission. Process taps are gated behind it —
+the app reads each app's audio in order to play it back at your chosen volume, and records
+nothing.
+
+The build is **ad-hoc signed, not notarized**: the project has no Apple Developer ID, so
+macOS cannot verify who built it and will warn on first launch. Open it the first time
+with right-click → Open so you can read that warning and decide, or build from source and
+sidestep the question.
+
 ## Requirements
 
-macOS 14.2+ (Core Audio process taps). Built and tested on macOS 26.4 with the Swift 6.3
-Command Line Tools; no Xcode needed.
+macOS 14.2 or later, for Core Audio process taps. Developed on macOS 26.4 with the Swift
+6.3 Command Line Tools; a full Xcode install is not required.
 
 ## Build
 
-```
-make app      # builds build/AudioAdjuster.app
+```sh
+make app      # assembles build/AudioAdjuster.app
 make run      # builds and launches it
-make test     # 44 unit tests
+make test     # unit tests
+make dist     # zipped bundle plus its checksum
 ```
 
-On first launch macOS asks for audio-recording permission. That is what process taps are
-gated behind — the app reads each app's audio in order to play it back at your chosen
-volume, and records nothing.
+macOS keys the permission grant to the code signature, so with ad-hoc signing **the
+prompt reappears after most rebuilds**.
 
-Because there is no Developer ID available, the bundle is ad-hoc signed. macOS keys the
-permission grant to the code signature, so **the prompt reappears after most rebuilds**.
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). It is mostly about how to tell whether a change to
+the audio path actually works, since almost none of it can be unit tested.
 
 ## How it works
 
@@ -132,8 +158,6 @@ Verified with the tap muted and the gain swept: measured output peak tracks requ
 linearly (1.00 -> 0.0275, 0.50 -> 0.0142, 0.25 -> 0.0069, 0.00 -> 0.0000, 2.00 -> 0.0549
 for a source whose unattenuated peak is 0.0275).
 
-## Status
+## License
 
-Per-app volume is verified working against live audio. Anti-duck is implemented as a gain
-preset but **its premise is still untested** — whether routing through our aggregate device
-also sidesteps the system's call ducking needs checking on a real call.
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
