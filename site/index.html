@@ -236,7 +236,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
 
   <section id="install">
     <div class="sec-head">Install</div>
-    <h2>Two minutes, then&nbsp;<em>forget</em> it.</h2>
+    <h2>Easy to&nbsp;<em>install</em>.</h2>
     <div class="steps" style="margin-top:36px">
       <div>
         <h3 style="font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-top:14px;border-top:1px solid var(--line)">From a release</h3>
@@ -269,29 +269,34 @@ make app &amp;&amp; make run</pre>
 
   <section id="what">
     <div class="sec-head">What it does</div>
-    <h2>One bar per app.&nbsp;<em>That</em> is the whole thing.</h2>
-    <p class="lede" style="max-width:60ch">
-      It lives in the menu bar. No Dock icon, no window, nothing to manage.
+    <h2>One bar per app,&nbsp;<em>absolute</em> gain.</h2>
+    <p class="lede" style="max-width:62ch">
+      Menu bar only — no Dock icon, no window. A bar sets a gain applied to that app's
+      audio, where 100% is exactly what macOS would otherwise have played. Values are
+      keyed to the bundle identifier, so they survive the app quitting, relaunching under
+      a new process, and your Mac restarting.
     </p>
     <div class="cols" style="margin-top:44px">
       <div class="col">
         <h3>0 to 1000%</h3>
-        <p>100% sits at the midpoint. Below it the scale is linear, so cuts are
-        proportional and reach exact silence. Above it logarithmic, so every equal drag is
-        an equal multiplication rather than a sliver of useful range and a long useless
-        tail.</p>
+        <p>100% at the midpoint: linear below, so cuts are proportional and reach exact
+        silence; logarithmic above, so equal drags are equal multiplications. Gain is ramped
+        across each buffer rather than stepped, so moving a bar cannot click, and soft
+        limited past full scale rather than wrapping.</p>
       </div>
       <div class="col">
         <h3>Linked, or not</h3>
-        <p>By default, turning one app up turns the others down by the same total, so the
-        mix keeps a constant sum. Switch it off and each bar moves alone. Mute is never
-        linked either way — it stays the way to silence one app and nothing else.</p>
+        <p>By default the bars hold a constant sum: what one app gains, the others give up,
+        shared equally, with anything that hits silence or the ceiling passing its residual
+        to bars that still have room. Switch it off and each moves alone. Mute is never
+        linked either way.</p>
       </div>
       <div class="col">
         <h3>Only what you hear</h3>
-        <p>Apps that have actually made a sound, and they keep their place once they fall
-        quiet, so a volume is still reachable between tracks. An app's several audio
-        processes collapse into one bar. System chimes never appear.</p>
+        <p>Core Audio reports around thirty processes; the list shows the ones that have
+        actually produced output, and keeps them once they fall quiet so a level is still
+        reachable between tracks. An app's several audio processes — a FaceTime call is two
+        — collapse into one bar covering all of them.</p>
       </div>
     </div>
   </section>
