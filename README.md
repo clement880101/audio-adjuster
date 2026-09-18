@@ -102,6 +102,10 @@ with observed output settling at 0.0275 against an un-ducked reference of 0.0275
 This is not a feature with a switch. It is what makes the call app's volume bar behave at
 all, and it applies whenever a call channel exists.
 
+It does **not** stop macOS quietening your other audio during a call. Compensation is
+applied only to the call's own channel. Everything else is ducked whether this app taps it
+or not, so it is left alone.
+
 ### The safety property
 
 Compensation reaches ~30x. If a call ends while that is applied, audio would be 30x too

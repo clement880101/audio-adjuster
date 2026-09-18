@@ -253,9 +253,10 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
         complete restore — there is no state left behind to repair.</p>
       </div>
       <div class="col">
-        <h3>Calls, handled</h3>
-        <p>macOS quietens everything during a call. Tapping the call would cost it that
-        exemption, so the duck is measured live and cancelled.</p>
+        <h3>Calls behave</h3>
+        <p>macOS quietens other audio during a call, and that still happens. But tapping
+        the call itself would cost it its own exemption, so that much is measured and
+        cancelled — enough for its bar to work.</p>
       </div>
     </div>
   </section>
@@ -265,6 +266,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
     <h2>What ducking actually&nbsp;<em>does</em>.</h2>
     <p class="lede" style="max-width:60ch">
       Taken on a live FaceTime call, against a test tone whose un-ducked peak is 0.0275.
+      This is not a feature — it is the arithmetic that makes a call's volume bar work.
     </p>
     <div class="readout">
       <table>
@@ -282,6 +284,13 @@ footer{border-top:1px solid var(--line);padding:34px 0 60px;font-family:var(--mo
       A muted tap captures audio <em>before</em> ducking; our own output is then ducked in
       turn. So the duck is a linear attenuation of about 0.033, and inverting it restores
       the original level exactly. The app measures that ratio live rather than assuming it.
+    </p>
+    <p class="note">
+      <strong style="color:var(--text)">To be clear about what this is not:</strong> the app
+      does not stop macOS quietening your music during a call. Compensation is applied only
+      to the call's own channel. Without it, dragging the call's bar would make the call
+      drastically quieter rather than louder — so this is what stops that control doing
+      harm, not a way to defeat ducking.
     </p>
     <p class="note">
       Compensation reaches about 30×, so a call ending at the wrong moment would be 30× too
