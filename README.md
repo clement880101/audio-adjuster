@@ -221,6 +221,12 @@ rather than returning an error. `SilenceAudit` detects that and releases the cha
 app cannot be left muted with nothing rendered in its place. `CONTRIBUTING.md` has the
 detail.
 
+## Support
+
+If this is useful to you, you can [sponsor the project](https://github.com/sponsors/clement880101).
+GitHub takes no cut on sponsorships from personal accounts and covers the payment
+processing, so all of it reaches the developer.
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
