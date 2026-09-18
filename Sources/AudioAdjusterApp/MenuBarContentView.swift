@@ -108,7 +108,7 @@ private struct AppRow: View {
                     Spacer(minLength: 4)
                     Text(label)
                         .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(gain > 1 ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                 }
             }
             .onTapGesture(count: 2) {
@@ -156,9 +156,10 @@ private struct VolumeBar<Content: View>: View {
 
     @State private var width: CGFloat = 0
 
-    /// Where 100% sits on a bar that runs to 200%.
-    private var unityFraction: CGFloat { CGFloat(1.0 / GainStage.maxGain) }
-    private var fraction: CGFloat { min(max(CGFloat(level / GainStage.maxGain), 0), 1) }
+    /// Where 100% sits on the bar. Not the middle of the gain range — the scale is
+    /// deliberately non-linear so everyday adjustment gets half the bar.
+    private var unityFraction: CGFloat { CGFloat(VolumeScale.unityPosition) }
+    private var fraction: CGFloat { CGFloat(VolumeScale.position(forGain: level)) }
 
     var body: some View {
         content
@@ -171,8 +172,8 @@ private struct VolumeBar<Content: View>: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard width > 0 else { return }
-                        let position = min(max(value.location.x / width, 0), 1)
-                        onChange(Float(position) * GainStage.maxGain)
+                        let position = Float(value.location.x / width)
+                        onChange(VolumeScale.gain(atPosition: position))
                     }
             )
     }

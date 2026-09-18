@@ -18,9 +18,12 @@ import Foundation
 /// `apply` does not mutate the stage, so every channel of one cycle ramps identically.
 public struct GainStage {
 
-    /// Ceiling on gain. Values above 1.0 exist for anti-duck, which needs to push audio
-    /// back up after the system has lowered it.
-    public static let maxGain: Float = 2.0
+    /// Ceiling on gain.
+    ///
+    /// Useful headroom rather than a promise: audio already near full scale cannot be made
+    /// louder, and pushing it only drives the limiter. Most app audio sits well below full
+    /// scale, which is where this range earns its keep.
+    public static let maxGain: Float = 4.0
 
     /// Level above which soft clipping begins. Below it, output is bit-identical to input.
     static let clipThreshold: Float = 0.9
