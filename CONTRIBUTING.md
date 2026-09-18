@@ -38,9 +38,10 @@ directly.
 
 ## Verifying audio changes
 
-Unit tests cover everything that can be tested without hardware: gain, balancing, the
-duck servo, the process registry, settings. Anything touching Core Audio cannot be, so
-there is a headless harness instead:
+Unit tests cover everything that can be tested without hardware: gain, the volume scale,
+balancing, the duck servo, the silence audit, process grouping, the registry and settings.
+Anything touching Core Audio cannot be, so there is a headless harness instead — the
+README lists every mode:
 
 ```sh
 .build/release/AudioAdjusterProbe --list                       # read-only
@@ -51,6 +52,10 @@ there is a headless harness instead:
 Claims about audio behaviour in this project are measured, not assumed, and pull requests
 that change the audio path should say what was measured. "Output peak tracked requested
 gain linearly across 0.0–4.0" is a review-able claim; "works on my machine" is not.
+
+The same applies to documentation: the README describes what the code does today, and the
+design document in `docs/` is kept as originally written with a separate section recording
+where reality differed. Please keep both honest rather than aspirational.
 
 There is also a debug log, off unless `AUDIOADJUSTER_DEBUG=1` or the file already exists:
 

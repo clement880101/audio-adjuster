@@ -63,10 +63,42 @@ returns to normal the instant we stop. Releasing the tap is therefore a complete
 
 **Apps you never touch are never tapped.** Nothing about their audio path changes.
 
-## Balance
+## What appears in the list
 
-With **Balance** on, the sliders are linked: turning one app up turns the others down by
-the same total, so the mix keeps a constant sum. The header shows that total.
+Only processes that have actually produced sound. Core Audio reports around thirty, most
+of them daemons holding an audio client without ever being audible, and listing those
+buries the handful worth adjusting.
+
+An app keeps its place after it falls silent, so its volume stays adjustable between
+tracks or before it starts. An app that quits is dropped, since there is no longer
+anything to tap. Apps you have already adjusted are listed from launch.
+
+Several processes belonging to one app are merged into a single bar — a FaceTime call runs
+as both `com.apple.FaceTime` and `com.apple.avconferenced`, and one tap can cover several
+process objects. System sound plumbing (`PowerChime`, `systemsoundserverd`) is never
+listed.
+
+Command-line audio tools do not appear: they have no bundle identifier, and settings are
+keyed by bundle ID so there would be nothing stable to attach them to.
+
+## Volume bars
+
+Each app gets one bar running from 0% to 400%, with **100% at the bar's midpoint**. The
+scale is deliberately non-linear: a linear bar would squeeze everyday adjustment — anything
+below normal volume — into the first quarter, where a pixel is worth several percent. Half
+the bar goes to the range people actually use, half to headroom.
+
+Headroom is not a promise. Audio already near full scale cannot be made louder, and gain
+past that only drives the limiter. Most app audio sits well below full scale, which is
+where the range earns its keep.
+
+Drag anywhere on a bar to set it; double click to mute.
+
+## Link volumes
+
+With **Link volumes** on — the default — the bars are linked: turning one app up turns the
+others down by the same total, so the mix keeps a constant sum. The header shows that
+total. Turn it off and each bar moves on its own.
 
 Gains stay absolute — 100% means "as macOS would play it" — so three apps sit at 100% each
 rather than 33% each, and opening a fourth app does not quietly make the first three
@@ -78,14 +110,14 @@ absorbing and passes its residual to apps that still have room.
 
 Two cases worth knowing:
 
-- **A single app is freely adjustable.** Forcing sliders to always sum to 100% would pin a
+- **A single app is freely adjustable.** Forcing bars to always sum to 100% would pin a
   lone app at 100% forever, which would remove the ability to simply turn one thing down.
-  Balancing pushes the *other* apps, so with no others the drag just applies.
+  Linking pushes the *other* apps, so with no others the drag just applies.
 - **The total can rise.** If every other app is already silent there is nowhere left to
   take volume from, so the drag still does what was asked and the sum grows.
 
-Call engines never participate: they cannot be tapped at all, so they can neither give nor
-take volume.
+Mute is never linked, in either mode. It stays the way to silence one app without pushing
+volume onto anything else.
 
 ## Call audio
 
@@ -123,44 +155,59 @@ loud. `DuckServo` is asymmetric about this throughout:
 | Path | Purpose |
 |---|---|
 | `Sources/AudioAdjusterKit/GainStage.swift` | Ramped gain and soft clip. The only code on the audio thread. |
+| `Sources/AudioAdjusterKit/VolumeScale.swift` | Maps a position on a bar to a gain, with 100% at the midpoint. |
+| `Sources/AudioAdjusterKit/Balance.swift` | Linked bars: what one app gains, the others give up. |
 | `Sources/AudioAdjusterKit/AppAudioChannel.swift` | Tap + aggregate device + IO proc for one app. |
 | `Sources/AudioAdjusterKit/ChannelCoordinator.swift` | Keeps live channels in step with settings and running apps. |
-| `Sources/AudioAdjusterKit/AudioProcessRegistry.swift` | Lists apps making sound. |
-| `Sources/AudioAdjusterKit/Settings.swift` | Persisted per-app gains and the anti-duck preset. |
+| `Sources/AudioAdjusterKit/DuckServo.swift` | Measures call ducking and decides the compensation. |
+| `Sources/AudioAdjusterKit/SilenceAudit.swift` | Releases a channel whose tap yields only silence. |
+| `Sources/AudioAdjusterKit/AudioProcessRegistry.swift` | Decides what appears in the list. |
+| `Sources/AudioAdjusterKit/ProcessGroup.swift` | Merges an app's several audio processes into one entry. |
+| `Sources/AudioAdjusterKit/Settings.swift` | Persisted per-app gains, link mode, and which processes carry call audio. |
+| `Sources/AudioAdjusterKit/CoreAudioSystem.swift` | Core Audio property reads and process enumeration. |
 | `Sources/AudioAdjusterApp/` | Menu bar UI. |
 | `Sources/AudioAdjusterProbe/` | Headless harness for verifying the audio path. |
-| `docs/superpowers/specs/` | Design document. |
+| `site/` | Landing page, deployed to GitHub Pages. |
+| `docs/superpowers/specs/` | Design document, with a record of where reality differed. |
 
 ## Probe
 
-Verifying the audio path without the UI:
+Core Audio behaviour cannot be unit tested, so there is a headless harness instead. It is
+how every audio claim in this README was established.
 
+```sh
+AudioAdjusterProbe --list                       # what the app would list. Read-only.
+AudioAdjusterProbe --raw                        # every process object, unfiltered, with
+                                                # the result of each property read
+AudioAdjusterProbe --gain <bundleID> <gain> [s] # tap one app for a while. Changes what
+                                                # you hear; restores on exit and Ctrl-C
+AudioAdjusterProbe --gain-pid <pid> <gain> [s]  # the same, by pid
+AudioAdjusterProbe --verify <pid> <out>         # gain sweep, reporting measured peaks
+AudioAdjusterProbe --servo <pid> <out>          # the duck compensation loop, converging
+AudioAdjusterProbe --selfduck <pid> <out>       # measures whether our own output is ducked
+AudioAdjusterProbe --geometry <pid> <out>       # tap format and IO buffer layout
+AudioAdjusterProbe --call-diag <out>            # which processes are audible, and whether
+                                                # a tap can capture each. Unmuted, so it is
+                                                # safe to run during a call
 ```
-.build/release/AudioAdjusterProbe --list                          # read-only
-.build/release/AudioAdjusterProbe --gain com.apple.Music 0.3 10   # changes what you hear
-```
 
-`--gain` restores the app on exit, including on Ctrl-C.
+Modes taking an `<out>` path write there instead of stdout, so they can be launched with
+`open -a` — see below for why that matters.
 
-## A gotcha that costs hours
+## Permissions
 
-**A process tap returns digital silence, with no error, unless the calling process has the
-`kTCCServiceAudioCapture` grant.** Everything still appears to work: the tap is created,
-the aggregate device reports the right format and channel counts, and the IO proc runs and
-delivers buffers of the correct size. They are simply full of zeros.
+Process taps require the `kTCCServiceAudioCapture` grant, and macOS only attaches it to a
+process with a bundle identity, prompting only when the app is its own responsible process.
+Launch through LaunchServices rather than running the binary directly:
 
-macOS can only attach that grant to a process with a bundle identity, and it only prompts
-when the app is its own responsible process. A bare SwiftPM executable run from a shell can
-never be granted it, and a bundled app run as `Foo.app/Contents/MacOS/Foo` from a terminal
-is attributed to the terminal instead. Launch it through LaunchServices:
-
-```
+```sh
 open -a build/AudioAdjuster.app
 ```
 
-Verified with the tap muted and the gain swept: measured output peak tracks requested gain
-linearly (1.00 -> 0.0275, 0.50 -> 0.0142, 0.25 -> 0.0069, 0.00 -> 0.0000, 2.00 -> 0.0549
-for a source whose unattenuated peak is 0.0275).
+Without the grant a tap is created successfully and delivers buffers of digital silence
+rather than returning an error. `SilenceAudit` detects that and releases the channel, so an
+app cannot be left muted with nothing rendered in its place. `CONTRIBUTING.md` has the
+detail.
 
 ## License
 
