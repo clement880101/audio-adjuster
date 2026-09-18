@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://clement880101.github.io/audio-adjuster/sitemap.xml

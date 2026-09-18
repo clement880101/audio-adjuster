@@ -1,7 +1,11 @@
 # Per-App Volume + Anti-Duck — Design
 
 Date: 2026-09-03
-Status: approved
+Status: implemented — see "What changed during implementation" at the end
+
+This is the design as agreed before building. It is kept as written, because the record of
+what we expected is worth having next to what turned out to be true. Every point where
+reality differed is listed at the end rather than edited in above.
 
 ## Problem
 
@@ -124,3 +128,80 @@ requiring a signing identity.
   only ad-hoc sign, and macOS keys the grant to the code hash, so the permission prompt
   reappears on most rebuilds during development.
 - Boosting above unity can clip; `GainStage` soft-clips rather than allowing wraparound.
+
+
+---
+
+## What changed during implementation
+
+Written after the fact. The architecture above survived; the anti-duck design did not.
+
+### Anti-duck was not an open question in the end — it was measured
+
+The spec treats "does the aggregate device sidestep ducking" as the open question. It does
+not, and the real behaviour is more useful. Measured on a live FaceTime call, against a
+test tone whose un-ducked peak is 0.0275:
+
+| measurement | peak |
+|---|---|
+| test tone, no call | 0.0275 |
+| captured via an **unmuted** tap, during a call | 0.0009 |
+| captured via **mutedWhenTapped**, during a call | 0.0275 |
+| our own rendered output, observed back | ratio 0.0334 |
+
+A muted tap captures audio *before* ducking. Our own output is then ducked in turn, by the
+same ~0.033. Ducking is a clean linear attenuation, linear well past full scale — rendered
+peaks of 0.82 / 1.65 / 3.29 came back as 0.0277 / 0.0557 / 0.1115 — so it can be inverted
+exactly rather than approximated.
+
+`DuckServo` measures the ratio live, by attaching an unmuted silent tap to our own process
+and comparing what we wrote with what reached the device. Convergence on a real call:
+29.2× → 31.4× → 31.6×, output settling at 0.0275 against an un-ducked 0.0275.
+
+### The call app must be compensated, not protected
+
+The spec has no notion of a protected app. Implementation first added one, because tapping
+the call engine made calls *quieter*: a call is exempt from ducking until we re-render it,
+at which point it becomes ordinary audio and is ducked. That block was later lifted, since
+compensation cancels exactly that attenuation. A tapped call engine is always compensated
+— not as a feature, but because without it the control does harm rather than nothing.
+
+### Anti-duck is not user-facing
+
+`AntiDuckPreset` and its toggle are gone. Compensation applies only to call channels, and
+only while a call is producing audio. It is a correction, not a feature.
+
+### Volume bars are linked, and the range runs to 400%
+
+Not in the spec at all. Raising one app lowers the others by the same total, with a switch
+to turn that off. The range runs to 4× on a non-linear bar with 100% at the midpoint, so
+everyday adjustment keeps half the bar.
+
+### The listing rule changed twice
+
+The spec says "every application currently emitting audio". Implementation first listed
+anything macOS could name, which surfaced seventeen entries, most of them daemons. Then
+anything with a Dock icon, which still admitted some and excluded audible oddities. The
+rule that stuck: only processes that have actually produced sound, remembered after they
+fall silent, with system sound plumbing excluded outright.
+
+Processes are also grouped: a FaceTime call runs as both `com.apple.FaceTime` and
+`com.apple.avconferenced`, and one tap covers several process objects, so it stays one
+control.
+
+### The trap the spec did not anticipate
+
+**A process tap returns digital silence, with no error, when the process lacks the
+`kTCCServiceAudioCapture` grant.** The tap is created, the format and channel counts are
+right, the IO proc runs and delivers correctly sized buffers of zeros. macOS only attaches
+that grant to a process with a bundle identity, and only prompts when the app is its own
+responsible process — so a bare SwiftPM executable can never obtain it.
+
+Because the tap also *mutes* the source, the failure mode is an app that goes silent for
+no visible reason. `SilenceAudit` exists entirely because of this.
+
+### Still true
+
+The per-app opt-in tap architecture, `CATapMutedWhenTapped` as the restore mechanism, the
+unwinding attach, the rebuild on default-device change, and the real-time constraints on
+the render path all held up unchanged.
