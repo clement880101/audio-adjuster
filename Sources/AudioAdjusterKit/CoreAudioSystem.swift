@@ -25,6 +25,12 @@ public enum CoreAudioProperty {
     }
 
     /// Reads a fixed-size property value.
+    ///
+    /// `T` must be a trivial type — Core Audio writes raw bytes over the whole value, so
+    /// anything holding an object reference would have ARC release a reference it never
+    /// retained. Every property read through here is a C struct or integer. The bytes are
+    /// handed over explicitly rather than as `&value`, which is the same thing but leaves
+    /// the compiler unable to tell that `T` is trivial.
     public static func value<T>(
         _ objectID: AudioObjectID,
         _ selector: AudioObjectPropertySelector,
@@ -35,7 +41,10 @@ public enum CoreAudioProperty {
         var address = self.address(selector, scope: scope)
         var size = UInt32(MemoryLayout<T>.size)
         var value = fallback
-        let status = AudioObjectGetPropertyData(objectID, &address, 0, nil, &size, &value)
+        let status = withUnsafeMutablePointer(to: &value) { pointer in
+            AudioObjectGetPropertyData(objectID, &address, 0, nil, &size,
+                                       UnsafeMutableRawPointer(pointer))
+        }
         guard status == noErr else { throw CoreAudioError(status: status, operation: operation) }
         return value
     }
@@ -62,6 +71,12 @@ public enum CoreAudioProperty {
     }
 
     /// Reads a `CFString` property.
+    ///
+    /// Core Audio writes a *retained* `CFStringRef` into the buffer and hands ownership to
+    /// the caller. The pointer is therefore read as plain memory and adopted with
+    /// `takeRetainedValue()`, which consumes that +1. Passing `&someCFString` instead lets
+    /// Core Audio overwrite a reference ARC believes it already owns, and leaves the
+    /// retain it handed over unbalanced.
     public static func string(
         _ objectID: AudioObjectID,
         _ selector: AudioObjectPropertySelector,
@@ -69,11 +84,15 @@ public enum CoreAudioProperty {
         operation: String
     ) throws -> String {
         var address = self.address(selector, scope: scope)
-        var size = UInt32(MemoryLayout<CFString?>.size)
-        var value: CFString = "" as CFString
-        let status = AudioObjectGetPropertyData(objectID, &address, 0, nil, &size, &value)
+        var size = UInt32(MemoryLayout<UnsafeRawPointer?>.size)
+        var raw: UnsafeRawPointer?
+        let status = withUnsafeMutablePointer(to: &raw) { pointer in
+            AudioObjectGetPropertyData(objectID, &address, 0, nil, &size,
+                                       UnsafeMutableRawPointer(pointer))
+        }
         guard status == noErr else { throw CoreAudioError(status: status, operation: operation) }
-        return value as String
+        guard let raw else { return "" }
+        return Unmanaged<CFString>.fromOpaque(raw).takeRetainedValue() as String
     }
 }
 
