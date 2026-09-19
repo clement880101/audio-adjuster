@@ -18,7 +18,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "AudioAdjusterApp",
-            dependencies: ["AudioAdjusterKit", "BrandMark"],
+            dependencies: ["AudioAdjusterKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(

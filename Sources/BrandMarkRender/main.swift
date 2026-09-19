@@ -29,15 +29,27 @@ func fail(_ message: String) -> Never {
     exit(1)
 }
 
-guard CommandLine.arguments.count == 2 else {
-    fail("usage: BrandMarkRender <output.iconset>")
+guard CommandLine.arguments.count == 3 else {
+    fail("usage: BrandMarkRender <output.iconset> <glyph-directory>")
 }
 let outputDirectory = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+let glyphDirectory = URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
 
-do {
-    try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-} catch {
-    fail("could not create \(outputDirectory.path): \(error.localizedDescription)")
+for directory in [outputDirectory, glyphDirectory] {
+    do {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    } catch {
+        fail("could not create \(directory.path): \(error.localizedDescription)")
+    }
+}
+
+func write(_ image: CGImage, to url: URL) {
+    guard let destination = CGImageDestinationCreateWithURL(
+        url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
+        fail("could not write \(url.path)")
+    }
+    CGImageDestinationAddImage(destination, image, nil)
+    guard CGImageDestinationFinalize(destination) else { fail("could not finalize \(url.path)") }
 }
 
 func render(pixels: Int) -> CGImage {
@@ -59,13 +71,31 @@ for rung in rungs {
     let image = renders[rung.pixels] ?? render(pixels: rung.pixels)
     renders[rung.pixels] = image
 
-    let url = outputDirectory.appendingPathComponent(rung.name)
-    guard let destination = CGImageDestinationCreateWithURL(
-        url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
-        fail("could not write \(url.path)")
-    }
-    CGImageDestinationAddImage(destination, image, nil)
-    guard CGImageDestinationFinalize(destination) else { fail("could not finalize \(url.path)") }
+    write(image, to: outputDirectory.appendingPathComponent(rung.name))
 }
 
+// The menu bar glyph ships as a bundle resource rather than as a SwiftUI label view:
+// MenuBarExtra's `image:` initialiser reliably produces a status item, where a custom
+// `label:` closure produced none at all on macOS 26. The "Template" suffix is load
+// bearing — NSImage(named:) reads it and sets isTemplate, which is what lets macOS
+// invert the glyph for a light or dark menu bar.
+func renderGlyph(pixels: Int) -> CGImage {
+    guard let context = CGContext(data: nil, width: pixels, height: pixels,
+                                  bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+        fail("could not open a \(pixels)px glyph context")
+    }
+    let ink = CGColor(gray: 0, alpha: 1)
+    BrandMark.draw(in: context,
+                   rect: CGRect(x: 0, y: 0, width: CGFloat(pixels), height: CGFloat(pixels)),
+                   form: .reduced, color: ink, trackColor: ink)
+    guard let image = context.makeImage() else { fail("could not render the \(pixels)px glyph") }
+    return image
+}
+
+write(renderGlyph(pixels: 18), to: glyphDirectory.appendingPathComponent("MenuBarGlyphTemplate.png"))
+write(renderGlyph(pixels: 36), to: glyphDirectory.appendingPathComponent("MenuBarGlyphTemplate@2x.png"))
+
 print("wrote \(rungs.count) icons to \(outputDirectory.path)")
+print("wrote the menu bar glyph to \(glyphDirectory.path)")

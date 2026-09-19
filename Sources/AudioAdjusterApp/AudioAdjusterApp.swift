@@ -1,5 +1,4 @@
 import AppKit
-import BrandMark
 import SwiftUI
 
 @main
@@ -8,13 +7,15 @@ struct AudioAdjusterApp: App {
     @StateObject private var model = AppModel.shared
 
     var body: some Scene {
-        MenuBarExtra {
+        // MenuBarGlyphTemplate.png is generated into the bundle by `make icon`. The
+        // "Template" suffix is load bearing: NSImage(named:) reads it and sets isTemplate,
+        // which is what lets macOS invert the glyph for a light or dark menu bar — so
+        // nothing here picks a colour.
+        MenuBarExtra("Audio Adjuster", image: "MenuBarGlyphTemplate") {
             MenuBarContentView(model: model)
                 // The polling loop already runs; this just avoids showing a list up to a
                 // second stale at the moment the popover opens.
                 .onAppear { model.refreshNow() }
-        } label: {
-            Image(nsImage: MenuBarIcon.image)
         }
         .menuBarExtraStyle(.window)
     }

@@ -32,9 +32,10 @@ build:
 ## rest of this build does not have.
 ICONSET := build/$(APP).iconset
 ICNS    := build/$(APP).icns
+GLYPHS  := build/glyph
 icon: build
-	rm -rf $(ICONSET)
-	.build/$(CONFIG)/BrandMarkRender $(ICONSET)
+	rm -rf $(ICONSET) $(GLYPHS)
+	.build/$(CONFIG)/BrandMarkRender $(ICONSET) $(GLYPHS)
 	iconutil -c icns $(ICONSET) -o $(ICNS)
 
 ## Assembles a real .app bundle. SwiftPM only produces a bare executable, so the bundle
@@ -44,6 +45,7 @@ app: build icon
 	mkdir -p $(BUNDLE)/Contents/MacOS $(BUNDLE)/Contents/Resources
 	cp .build/$(CONFIG)/AudioAdjusterApp $(BUNDLE)/Contents/MacOS/$(APP)
 	cp $(ICNS) $(BUNDLE)/Contents/Resources/$(APP).icns
+	cp $(GLYPHS)/MenuBarGlyphTemplate*.png $(BUNDLE)/Contents/Resources/
 	cp Resources/Info.plist $(BUNDLE)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(BUNDLE)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(VERSION)" $(BUNDLE)/Contents/Info.plist

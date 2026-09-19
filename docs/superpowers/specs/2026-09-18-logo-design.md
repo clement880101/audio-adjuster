@@ -217,3 +217,27 @@ Existing `swift test` must stay green.
   (`clamp(3.2rem,8vw,5.6rem)`) is wider than the viewport and is clipped by
   `overflow-x:hidden`. This is on `main` today, it is not caused by the mark, and fixing
   it is a separate change.
+
+## The menu bar glyph ships as a bundle resource, not a label view
+
+The design said the app would build an 18pt `NSImage` and pass it to
+`MenuBarExtra(content:label:)`. It is built the other way round — the glyph is written
+into the bundle and named:
+
+    MenuBarExtra("Audio Adjuster", image: "MenuBarGlyphTemplate") { ... }
+
+`BrandMarkRender` writes `MenuBarGlyphTemplate.png` and `@2x` into `Contents/Resources/`
+alongside the `.icns`. The `Template` suffix is load bearing: `NSImage(named:)` reads it
+and sets `isTemplate`, which is what makes macOS invert the glyph for a light or dark
+menu bar, so nothing in the app picks a colour.
+
+This removed code rather than adding it. `MenuBarIcon.swift` is gone and
+`AudioAdjusterApp` no longer depends on `BrandMark`, because the glyph is a build
+artefact rather than something drawn at runtime — the same thing the `.icns` already was.
+
+A note for anyone who finds the icon missing after a change here: it is worth ruling out
+a full menu bar before suspecting the code. macOS silently drops status items when the
+bar runs out of room, and from outside the process there is no easy way to tell that from
+an item that was never created — `CGWindowListCopyWindowInfo` does not report status bar
+windows even when one is visible, and screenshots are filtered to granted applications,
+which a background agent is not.
