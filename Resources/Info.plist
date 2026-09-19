@@ -16,7 +16,8 @@
 	<key>CFBundleIconFile</key>
 	<string>AudioAdjuster</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.1</string>
+	<!-- Bumped by release-please; `make app` stamps the tag over it at build time. -->
+	<string>0.2.2</string> <!-- x-release-please-version -->
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>

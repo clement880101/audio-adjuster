@@ -1,0 +1,94 @@
+name: Release Please
+
+# Works out the next version from the Conventional Commit messages on main, keeps
+# CHANGELOG.md, and opens a "chore: release" pull request. Nothing is published until
+# that PR is merged — merging it is the decision to release.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # The release and its tag are created with GITHUB_TOKEN, and GitHub deliberately does
+  # not start new workflow runs from those events — so release.yml will not see the tag.
+  # The build therefore hangs off this job rather than off a tag trigger.
+  publish:
+    needs: propose
+    if: needs.propose.outputs.released == 'true'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.propose.outputs.tag }}
+
+      - name: Build and test
+        run: |
+          swift build -c release
+          make test
+
+      - name: Package
+        # Stamp the tag into the bundle so the app cannot report a different version
+        # from the release it was published under.
+        run: make dist VERSION="${TAG#v}"
+        env:
+          TAG: ${{ needs.propose.outputs.tag }}
+
+      - name: Attach the build to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.propose.outputs.tag }}
+        run: |
+          set -euo pipefail
+          CHECKSUM=$(shasum -a 256 build/AudioAdjuster-macos.zip | cut -d' ' -f1)
+          gh release upload "$TAG" build/AudioAdjuster-macos.zip --clobber
+
+          # release-please has already written the changelog into the release body; the
+          # install instructions and the checksum are appended to it rather than
+          # replacing it, so both survive.
+          gh release view "$TAG" --json body --jq .body > body.md
+          cat >> body.md <<NOTES
+
+          ## Install
+
+          \`\`\`sh
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | sh
+          \`\`\`
+
+          Or download \`AudioAdjuster-macos.zip\` below and move the app to /Applications.
+
+          Requires macOS 14.2 or later. On first use the app asks for audio-recording
+          permission — Core Audio process taps are gated behind it, and without it a tap
+          returns silence rather than an error.
+
+          The build is ad-hoc signed, not notarized, because the project has no Apple
+          Developer ID. Installed with the command above it opens normally, since files
+          fetched by curl are not quarantined. If you download the zip below through a
+          browser it is quarantined instead, and macOS will refuse a double-click — open
+          it the first time with right-click > Open.
+
+          \`\`\`
+          SHA-256  ${CHECKSUM}
+          \`\`\`
+          NOTES
+          gh release edit "$TAG" --notes-file body.md
