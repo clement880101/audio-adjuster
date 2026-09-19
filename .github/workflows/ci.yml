@@ -22,8 +22,12 @@ jobs:
           swift --version
           xcodebuild -version
 
+      # -warnings-as-errors is set here rather than in the Makefile so local builds stay
+      # permissive while you work, and nothing reaches main with a new warning. Two
+      # UnsafeMutableRawPointer warnings sat in CoreAudioSystem.swift for exactly this
+      # reason: they were visible in every log and blocked nothing.
       - name: Build
-        run: swift build -c release
+        run: swift build -c release -Xswiftc -warnings-as-errors
 
       - name: Test
         run: make test
@@ -35,9 +39,24 @@ jobs:
       # Info.plist or a broken signature only shows up at launch otherwise.
       - name: Verify bundle
         run: |
+          set -euo pipefail
           plutil -lint build/AudioAdjuster.app/Contents/Info.plist
           codesign --verify --deep --strict --verbose=2 build/AudioAdjuster.app
           test -x build/AudioAdjuster.app/Contents/MacOS/AudioAdjuster
+
+          # The icon and the menu bar glyph are generated rather than committed, so a
+          # broken `make icon` would otherwise ship a bundle with no artwork in it and
+          # only show up on someone's screen.
+          for resource in \
+            AudioAdjuster.icns \
+            MenuBarGlyphTemplate.png \
+            MenuBarGlyphTemplate@2x.png
+          do
+            path="build/AudioAdjuster.app/Contents/Resources/$resource"
+            test -s "$path" || { echo "::error::missing or empty: $resource"; exit 1; }
+          done
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIconFile" \
+            build/AudioAdjuster.app/Contents/Info.plist
 
       - uses: actions/upload-artifact@v5
         with:
