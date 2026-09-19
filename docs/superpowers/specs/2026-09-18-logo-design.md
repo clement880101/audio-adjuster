@@ -218,26 +218,38 @@ Existing `swift test` must stay green.
   `overflow-x:hidden`. This is on `main` today, it is not caused by the mark, and fixing
   it is a separate change.
 
-## The menu bar glyph ships as a bundle resource, not a label view
+## The menu bar glyph ships as a bundle resource, loaded with NSImage(named:)
 
-The design said the app would build an 18pt `NSImage` and pass it to
-`MenuBarExtra(content:label:)`. It is built the other way round — the glyph is written
-into the bundle and named:
+The design said the app would draw an 18pt `NSImage` at runtime. It does not: the glyph
+is generated into the bundle like the `.icns` is, and the app loads it by name.
 
-    MenuBarExtra("Audio Adjuster", image: "MenuBarGlyphTemplate") { ... }
+`BrandMarkRender` writes `MenuBarGlyphTemplate.png` and `@2x` into `Contents/Resources/`.
+The `Template` suffix is load bearing — `NSImage(named:)` reads it and sets `isTemplate`,
+which is what lets macOS invert the glyph for a light or dark menu bar, so nothing in the
+app picks a colour.
 
-`BrandMarkRender` writes `MenuBarGlyphTemplate.png` and `@2x` into `Contents/Resources/`
-alongside the `.icns`. The `Template` suffix is load bearing: `NSImage(named:)` reads it
-and sets `isTemplate`, which is what makes macOS invert the glyph for a light or dark
-menu bar, so nothing in the app picks a colour.
+**The lookup has to be `NSImage(named:)`, not SwiftUI's `Image("name")`.** Passing the
+name straight to `MenuBarExtra(_:image:)` shipped a menu bar item that was clickable and
+entirely blank: SwiftUI's string lookup only searches a compiled asset catalog, and this
+bundle is assembled by the Makefile and has none, so it resolved to nothing and set no
+image at all. The failure is silent — no warning, no fallback, just an invisible item.
+Probing the status item's button showed it directly:
 
-This removed code rather than adding it. `MenuBarIcon.swift` is gone and
-`AudioAdjusterApp` no longer depends on `BrandMark`, because the glyph is a build
-artefact rather than something drawn at runtime — the same thing the `.icns` already was.
+    before:  BUTTON image=NIL              status item 16pt wide, empty
+    after:   BUTTON image=(18.0, 18.0)     status item 34pt wide
+             template=true
 
-A note for anyone who finds the icon missing after a change here: it is worth ruling out
-a full menu bar before suspecting the code. macOS silently drops status items when the
-bar runs out of room, and from outside the process there is no easy way to tell that from
-an item that was never created — `CGWindowListCopyWindowInfo` does not report status bar
-windows even when one is visible, and screenshots are filtered to granted applications,
-which a background agent is not.
+So `MenuBarIcon` resolves the image with `NSImage(named:)` and hands SwiftUI the result,
+and falls back to the old `slider.horizontal.3` symbol if the glyph is ever missing —
+a visibly wrong icon beats an invisible one.
+
+### Diagnosing this class of bug
+
+A menu bar item can fail in three different ways that look identical from outside the
+process: never created, created but blank, or created but placed behind the display's
+notch. None of them can be told apart externally — `CGWindowListCopyWindowInfo` does not
+report status bar windows even when one is confirmed visible, and screenshots are
+filtered to granted applications, which a background agent is not. Walking
+`NSApp.windows` for the `NSStatusBarWindow` and reading its `NSStatusBarButton` answers
+all three at once: whether the window exists, what its `image` is, and where its frame
+sits relative to `NSScreen.auxiliaryTopLeftArea` / `auxiliaryTopRightArea`.
