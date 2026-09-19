@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>Audio Adjuster — social card source</title>
+<!--
+  The source of og.png. It is kept as HTML rather than as a PNG alone so the card can be
+  changed later without a design tool, and so it uses the same webfonts and palette as
+  index.html rather than an approximation of them.
+
+  Regenerate with any browser that can screenshot a viewport at exactly 1200×630, e.g.
+
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+        --headless --disable-gpu --force-device-scale-factor=1 \
+        --window-size=1200,630 --hide-scrollbars \
+        --screenshot=site/og.png site/og.html
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0b0c0e; --panel:#131517; --line:#24282c;
+  --text:#e9e5dd; --dim:#8b9199; --dimmer:#5d646c;
+  --accent:#f2a33c; --accent-line:rgba(242,163,60,.4);
+  --serif:"Instrument Serif",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--ink)}
+.card{
+  position:relative;width:1200px;height:630px;overflow:hidden;
+  background:var(--ink);color:var(--text);
+}
+/* The ruled-paper lines from the site, at the same 44px pitch. */
+.card::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:repeating-linear-gradient(to bottom,rgba(255,255,255,.017) 0 1px,transparent 1px 44px);
+}
+
+.eyebrow{
+  position:absolute;left:80px;top:72px;right:80px;
+  display:flex;align-items:center;gap:24px;
+  font-family:var(--mono);font-weight:500;font-size:15px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent);white-space:nowrap;
+}
+.eyebrow::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,var(--accent-line),transparent)}
+
+h1{
+  position:absolute;left:80px;top:126px;width:1040px;
+  font-family:var(--serif);font-weight:400;font-size:72px;line-height:1.18;
+  letter-spacing:-.02em;
+}
+h1 em{font-style:italic;color:var(--accent)}
+
+.bars{position:absolute;left:690px;top:212px;width:430px;display:flex;flex-direction:column;gap:15px}
+.row{position:relative;height:40px;border-radius:8px;background:var(--panel);overflow:hidden}
+.fill{position:absolute;inset:0 auto 0 0;background:var(--accent);opacity:.55}
+.row-in{position:relative;display:flex;align-items:center;height:100%;padding:0 14px;
+  font-family:var(--mono);font-size:15px}
+.pct{margin-left:auto;font-size:14px;color:var(--dim)}
+
+footer{
+  position:absolute;left:80px;right:80px;bottom:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--mono);font-size:20px;
+}
+/* The same six rectangles Sources/BrandMark/BrandMark.swift draws for the app icon, and
+   the same ones inlined in index.html's masthead. Change one and change the others. */
+.brand{display:flex;align-items:center;gap:12px;font-weight:500;color:var(--text)}
+.brand svg{width:28px;height:28px;flex:none;display:block}
+.brand .trk{fill:var(--line)}
+.brand .fil{fill:var(--accent)}
+.repo{color:var(--dimmer)}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="eyebrow">macOS · Core Audio process taps · Apache 2.0</div>
+
+  <h1>Every app gets its <em>own</em><br>volume.</h1>
+
+  <div class="bars">
+    <div class="row">
+      <div class="fill" style="width:50%"></div>
+      <div class="row-in"><span>Music</span><span class="pct">100%</span></div>
+    </div>
+    <div class="row">
+      <div class="fill" style="width:72%"></div>
+      <div class="row-in"><span>Firefox</span><span class="pct">176%</span></div>
+    </div>
+    <div class="row">
+      <div class="fill" style="width:28%"></div>
+      <div class="row-in"><span>FaceTime</span><span class="pct">56%</span></div>
+    </div>
+  </div>
+
+  <footer>
+    <span class="brand">
+      <svg viewBox="0 0 100 100" role="img" aria-hidden="true">
+        <g class="trk">
+          <rect x="8" y="16" width="84" height="16" rx="8"/>
+          <rect x="8" y="42" width="84" height="16" rx="8"/>
+          <rect x="8" y="68" width="84" height="16" rx="8"/>
+        </g>
+        <g class="fil">
+          <rect x="8" y="16" width="52" height="16" rx="8"/>
+          <rect x="8" y="42" width="70" height="16" rx="8"/>
+          <rect x="8" y="68" width="32" height="16" rx="8"/>
+        </g>
+      </svg>
+      Audio Adjuster
+    </span>
+    <span class="repo">github.com/clement880101/audio-adjuster-mac</span>
+  </footer>
+
+</div>
+</body>
+</html>

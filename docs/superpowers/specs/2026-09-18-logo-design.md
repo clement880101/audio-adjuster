@@ -194,3 +194,26 @@ Existing `swift test` must stay green.
 - A README header image.
 - Any change to the popover UI inside the app.
 - Replacing the wordmark's typography or the site's palette.
+
+## What changed during implementation
+
+- **Middle fill 80 → 70** (95% → 83% of the track). At 95% the track showed as a
+  four-unit sliver past the end of the fill, which read as a rendering artefact rather
+  than as a level. 83% leaves a visible remainder on every row.
+- **`og.html` breaks its headline with `<br>`** rather than relying on a width that
+  happens to wrap in the right place. Matching the old card's "Every app gets its own /
+  volume." by tuning `width` meant the wrap point moved with every font-size nudge.
+- **The masthead wordmark is hidden below 560px**, leaving the mark alone. The mark cost
+  the masthead 31px, and at 375px the nav was already clipping "HOW" *before* this
+  change; dropping the word buys back about 124px, so the narrow masthead now fits all
+  four nav items where it previously did not. The word stays in the document, clipped
+  rather than `display:none`, so screen readers still announce it.
+- **The card's repo URL was stale.** The old `og.png` read
+  `github.com/clement880101/audio-adjuster`; the repository is `audio-adjuster-mac`. The
+  regenerated card corrects it.
+- **Rendered with headless Chrome** rather than by hand-driving a browser. The exact
+  command is in the comment at the top of `og.html`.
+- **The pre-existing mobile overflow was left alone.** At 375px the hero `h1`
+  (`clamp(3.2rem,8vw,5.6rem)`) is wider than the viewport and is clipped by
+  `overflow-x:hidden`. This is on `main` today, it is not caused by the mark, and fixing
+  it is a separate change.

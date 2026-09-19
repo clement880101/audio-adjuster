@@ -19,7 +19,7 @@ CONFIG  := release
 ## build cannot disagree with the release it came from — it did once, silently.
 VERSION ?= $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist)
 
-.PHONY: test build app clean run probe
+.PHONY: test build app clean run probe icon
 
 test:
 	swift test $(TESTFLAGS)
@@ -27,12 +27,23 @@ test:
 build:
 	swift build -c $(CONFIG)
 
+## The icon is drawn rather than converted from an SVG: no rasteriser ships with macOS,
+## and requiring one from Homebrew would put a dependency in front of `make app` that the
+## rest of this build does not have.
+ICONSET := build/$(APP).iconset
+ICNS    := build/$(APP).icns
+icon: build
+	rm -rf $(ICONSET)
+	.build/$(CONFIG)/BrandMarkRender $(ICONSET)
+	iconutil -c icns $(ICONSET) -o $(ICNS)
+
 ## Assembles a real .app bundle. SwiftPM only produces a bare executable, so the bundle
 ## layout, Info.plist and signature are put together by hand here.
-app: build
+app: build icon
 	rm -rf $(BUNDLE)
 	mkdir -p $(BUNDLE)/Contents/MacOS $(BUNDLE)/Contents/Resources
 	cp .build/$(CONFIG)/AudioAdjusterApp $(BUNDLE)/Contents/MacOS/$(APP)
+	cp $(ICNS) $(BUNDLE)/Contents/Resources/$(APP).icns
 	cp Resources/Info.plist $(BUNDLE)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(BUNDLE)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(VERSION)" $(BUNDLE)/Contents/Info.plist

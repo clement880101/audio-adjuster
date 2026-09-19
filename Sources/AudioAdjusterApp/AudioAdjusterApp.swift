@@ -1,4 +1,5 @@
 import AppKit
+import BrandMark
 import SwiftUI
 
 @main
@@ -7,11 +8,13 @@ struct AudioAdjusterApp: App {
     @StateObject private var model = AppModel.shared
 
     var body: some Scene {
-        MenuBarExtra("Audio Adjuster", systemImage: "slider.horizontal.3") {
+        MenuBarExtra {
             MenuBarContentView(model: model)
                 // The polling loop already runs; this just avoids showing a list up to a
                 // second stale at the moment the popover opens.
                 .onAppear { model.refreshNow() }
+        } label: {
+            Image(nsImage: MenuBarIcon.image)
         }
         .menuBarExtraStyle(.window)
     }
